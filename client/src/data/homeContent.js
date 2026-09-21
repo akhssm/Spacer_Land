@@ -6,137 +6,170 @@ import {
   Box,
   EyeOff,
   FileText,
-  Images,
+  Image,
+  Info,
   Layers,
   Link2,
   LocateFixed,
   MapPin,
-  MessageCircle,
   Navigation,
   Palette,
+  Pencil,
+  RefreshCw,
   Ruler,
   Satellite,
   Search,
   Smartphone,
-  Table,
+  Tag,
   Users,
+  Zap,
 } from 'lucide-react'
 
 export const SITE = {
-  name: 'PlotView',
-  tagline: 'Your plot layout, live on the map',
+  name: 'Spacer',
+  tagline: 'Interactive plot viewer',
+  description: 'An interactive 3D plot viewing experience for real-estate developers.',
   email: 'hello@example.com', // TODO: replace with your sales email
+  phone: '', // TODO: number with country code, e.g. +919876543210
   whatsapp: '', // TODO: number with country code and no "+", e.g. 919876543210
+  address: 'Hyderabad, Telangana, India', // TODO: replace with your office address
 }
 
-export const NAV_LINKS = [
-  { label: 'Features', href: '#features' },
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'Requirements', href: '#requirements' },
-  { label: 'FAQ', href: '#faq' },
-]
+export const HERO = {
+  title: 'The ultimate way to show your',
+  titleAccent: 'plots.',
+  lead: 'Put your whole layout on the real map, with live availability, and share it as one link.',
+  note: 'No app to install. Works on any phone.',
+}
 
-// Plot statuses. The same keys will be used by the real viewer later.
-export const STATUSES = [
-  { key: 'available', label: 'Available' },
-  { key: 'sold', label: 'Sold' },
-  { key: 'hold', label: 'Hold' },
-  { key: 'reserved', label: 'Reserved' },
-]
+export const STATEMENT = {
+  line: 'No PDFs, No Spreadsheets,',
+  accentLine: 'Just One Live Link',
+}
 
-export const HIGHLIGHTS = [
+// TODO: these are samples. Replace them with real projects, and set "href"
+// to each project's viewer link once the viewer is built.
+export const DEMOS = [
   {
-    icon: Link2,
-    title: 'One link, not ten files',
-    text: 'Layout, brochure, photos, videos and location open from a single link you can send on WhatsApp.',
+    name: 'Green Meadows',
+    city: 'Hyderabad',
+    text: 'Sample residential layout, fully interactive in 3D.',
+    glow: '#b9822e',
+    href: '#',
   },
   {
-    icon: Table,
-    title: 'Inventory that is always current',
-    text: 'Mark a plot sold once. Everyone who opens the link sees the change straight away.',
+    name: 'Demo Project',
+    city: 'Hyderabad',
+    text: 'Sample project that shows every feature in one place.',
+    glow: '#1f8f8f',
+    href: '#',
   },
   {
-    icon: MapPin,
-    title: 'The layout on the real land',
-    text: 'Buyers see your layout placed on the satellite map, so roads and surroundings make sense.',
-  },
-]
-
-export const FEATURE_GROUPS = [
-  {
-    title: 'For your buyers',
-    features: [
-      { icon: Satellite, title: 'Satellite view', text: 'The layout drawn over the real site.' },
-      { icon: Box, title: '2D and 3D', text: 'Switch between a flat plan and a tilted 3D view.' },
-      { icon: LocateFixed, title: 'Live GPS', text: 'Shows where the buyer is standing on the site.' },
-      { icon: Navigation, title: 'Directions', text: 'Opens the route to the site in Google Maps.' },
-      { icon: Search, title: 'Plot search', text: 'Jump to any plot by its number.' },
-      { icon: Ruler, title: 'Plot dimensions', text: 'Side lengths and area, even for odd-shaped plots.' },
-      { icon: ArrowLeftRight, title: 'Unit switch', text: 'View areas in sq.ft, sq.yd or sq.m.' },
-      { icon: Images, title: 'Gallery', text: 'Site photos and YouTube videos in one place.' },
-      { icon: FileText, title: 'Brochure', text: 'Download the project brochure from the viewer.' },
-      { icon: Smartphone, title: 'No app to install', text: 'Opens in the phone browser from a link.' },
-    ],
+    name: 'Orbit Industrial Park',
+    city: 'Sangareddy',
+    text: 'Sample industrial plots with live inventory updates.',
+    glow: '#3f66c9',
+    href: '#',
   },
   {
-    title: 'For your sales team',
-    features: [
-      { icon: Table, title: 'Inventory table', text: 'Update plot status in a spreadsheet-like screen.' },
-      { icon: Palette, title: 'Status colours', text: 'Available, Sold, Hold and Reserved, in your colours.' },
-      { icon: Layers, title: 'Zones', text: 'Group plots into phases or zones and filter by them.' },
-      { icon: EyeOff, title: 'Public and internal links', text: 'Hide inventory status on the link you share publicly.' },
-      { icon: MessageCircle, title: 'WhatsApp enquiry', text: 'Buyers enquire about a plot in one tap.' },
-      { icon: Users, title: 'Lead list', text: 'Keep track of who enquired about which plot.' },
-    ],
+    name: 'Hillcrest Farms',
+    city: 'Vikarabad',
+    text: 'Sample farm plots placed on the satellite map.',
+    glow: '#5f9e3a',
+    href: '#',
   },
 ]
 
-export const STEPS = [
-  {
-    title: 'Send us your layout',
-    text: 'Share the approved layout drawing, the site location and your branding.',
-  },
-  {
-    title: 'We place it on the map',
-    text: 'Every plot is traced, numbered and lined up with the satellite map.',
-  },
-  {
-    title: 'Share one link',
-    text: 'Send the link to buyers and brokers. Update plot status whenever a deal moves.',
-  },
+export const FEATURES = [
+  { icon: Satellite, title: 'Satellite View' },
+  { icon: LocateFixed, title: 'Live GPS' },
+  { icon: Search, title: 'Plot Search' },
+  { icon: Image, title: 'Photo & Video Gallery' },
+  { icon: Users, title: 'Lead Management' },
+  { icon: Ruler, title: 'Automatic Dimensions' },
+  { icon: Layers, title: 'Zones & Phases' },
+  { icon: Tag, title: 'Custom Plot Labels' },
+  { icon: RefreshCw, title: 'Live Inventory Updates' },
+  { icon: Palette, title: 'Status Colours' },
+  { icon: Navigation, title: 'Directions to Site' },
+  { icon: Box, title: '2D & 3D View' },
+  { icon: ArrowLeftRight, title: 'Unit Switch' },
+  { icon: FileText, title: 'Brochure Download' },
+  { icon: Zap, title: 'Fast Loading' },
+  { icon: Link2, title: 'One Link for Everything' },
+  { icon: Smartphone, title: 'No App Needed' },
+  { icon: Info, title: 'Project Info Panel' },
+  { icon: Pencil, title: 'Edit After Sharing' },
+  { icon: EyeOff, title: 'Public & Internal Links' },
 ]
+
+export const PRICING = {
+  title: 'One Plan, Everything Included',
+  price: '₹00,000/-', // TODO: set your price
+  tax: '+ 18% GST',
+  note: 'Extra hosting years and layout change rounds are priced separately, only if you need them.',
+}
+
+export const DELIVERY = {
+  title: 'Live in days, not weeks',
+  text: 'From your raw layout drawing to a fully interactive link your sales team can share.',
+}
 
 export const REQUIREMENTS = [
   {
     icon: FileText,
-    title: 'Layout drawing',
+    title: 'Layout Drawing',
     text: 'A CAD file or vector PDF is best. A clear image of the layout also works.',
   },
   {
     icon: MapPin,
-    title: 'Site location',
-    text: 'A Google Maps pin or link for the project site.',
+    title: 'Google Map Location',
+    text: 'A pin or link for the project site, so the layout sits on the right land.',
   },
   {
     icon: Palette,
-    title: 'Branding',
-    text: 'Your logo, brand colours and the project name.',
+    title: 'Branding Details',
+    text: 'Your logo, colours and project name, so the viewer looks like yours.',
+  },
+]
+
+// TODO: placeholders. Replace with real quotes from real customers before launch.
+export const TESTIMONIALS = [
+  {
+    quote: 'Add a real customer quote here. One or two sentences about how the link helped them sell.',
+    name: 'Customer name',
+    role: 'Role, Company',
+  },
+  {
+    quote: 'Add a second customer quote here. A buyer or a broker works well too.',
+    name: 'Customer name',
+    role: 'Role, Company',
+  },
+  {
+    quote: 'Add a third customer quote here.',
+    name: 'Customer name',
+    role: 'Role, Company',
   },
 ]
 
 export const FAQS = [
   {
-    question: 'Do buyers need to install an app?',
-    answer: 'No. The viewer opens in the browser on any phone or computer, straight from the link.',
+    question: 'What exactly is Spacer?',
+    answer:
+      'A web link that shows your plot layout on a satellite map in 2D and 3D, with plot sizes, status, gallery, brochure and directions in one place.',
   },
   {
-    question: 'Which kinds of projects does it support?',
+    question: 'What type of real-estate projects can use Spacer?',
     answer:
       'Plotted projects: residential, commercial and industrial plots, farmhouses, villas and row houses. It is not made for apartments.',
   },
   {
-    question: 'Does it design the layout for me?',
+    question: 'Does Spacer design the project layout?',
     answer: 'No. It shows a layout you already have. We do not create or change the layout design.',
+  },
+  {
+    question: 'Do buyers need to install an app?',
+    answer: 'No. The viewer opens in the browser on any phone or computer, straight from the link.',
   },
   {
     question: 'Who updates the plot status?',
@@ -145,22 +178,35 @@ export const FAQS = [
   },
   {
     question: 'Can I hide which plots are sold?',
-    answer:
-      'Yes. Each project has an internal link that shows status and a public link that hides it.',
+    answer: 'Yes. Each project has an internal link that shows status and a public link that hides it.',
   },
   {
     question: 'My plots are not rectangles. Will areas still be right?',
     answer:
       'Yes. Areas and side lengths are calculated from the actual plot shape, so corner, curved and triangular plots work.',
   },
+  {
+    question: 'Can I change things after the link is shared?',
+    answer:
+      'Yes. Gallery, brochure, units, zones and plot status can be changed at any time, and the same link keeps working.',
+  },
 ]
 
-// Where the "Book a demo" buttons go: WhatsApp if a number is set, email otherwise.
+export const FOOTER_LINKS = [
+  { label: 'Demos', href: '#demos' },
+  { label: 'Features', href: '#features' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'Files Required', href: '#requirements' },
+  { label: 'Testimonials', href: '#testimonials' },
+  { label: 'FAQ', href: '#faq' },
+]
+
+// Where the main buttons go: WhatsApp if a number is set, email otherwise.
 export function getContactLink() {
-  const message = `Hi, I would like a demo of ${SITE.name}.`
+  const message = `Hi, I would like to know more about ${SITE.name}.`
 
   if (SITE.whatsapp) {
     return `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(message)}`
   }
-  return `mailto:${SITE.email}?subject=${encodeURIComponent(`${SITE.name} demo`)}`
+  return `mailto:${SITE.email}?subject=${encodeURIComponent(`${SITE.name} enquiry`)}`
 }

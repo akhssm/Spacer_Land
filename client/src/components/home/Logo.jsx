@@ -1,16 +1,21 @@
 import { SITE } from '../../data/homeContent'
 
-// Small plot-grid mark plus the site name. Used in the navbar and footer.
-function Logo() {
+// Four plots arranged as a diamond, plus the site name. Used in the navbar and footer.
+function Logo({ showTagline = false }) {
   return (
-    <a href="#top" className="logo" aria-label={`${SITE.name} home`}>
-      <svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true">
-        <rect x="1" y="1" width="12" height="12" rx="3" className="logo__plot" />
-        <rect x="15" y="1" width="12" height="12" rx="3" className="logo__plot logo__plot--accent" />
-        <rect x="1" y="15" width="12" height="12" rx="3" className="logo__plot" />
-        <rect x="15" y="15" width="12" height="12" rx="3" className="logo__plot" />
+    <a href="#top" className="inline-flex items-center gap-3" aria-label={`${SITE.name} home`}>
+      <svg viewBox="0 0 28 28" className="size-7 rotate-45" aria-hidden="true">
+        <rect x="2" y="2" width="11" height="11" rx="2" className="fill-brand" />
+        <rect x="15" y="2" width="11" height="11" rx="2" className="fill-brand/45" />
+        <rect x="2" y="15" width="11" height="11" rx="2" className="fill-brand/45" />
+        <rect x="15" y="15" width="11" height="11" rx="2" className="fill-brand/80" />
       </svg>
-      <span>{SITE.name}</span>
+      <span className="text-2xl font-bold uppercase tracking-wider">{SITE.name}</span>
+      {showTagline && (
+        <span className="hidden text-[11px] uppercase tracking-wide text-white/90 sm:inline">
+          {SITE.tagline}
+        </span>
+      )}
     </a>
   )
 }

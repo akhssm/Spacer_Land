@@ -1,30 +1,24 @@
-import { ArrowRight } from 'lucide-react'
-import { getContactLink } from '../../data/homeContent'
-import PlotIllustration from './PlotIllustration'
+import { HERO, SITE } from '../../data/homeContent'
+import ButtonLink from '../ui/ButtonLink'
+import PhoneMockup from './PhoneMockup'
 
 function Hero() {
   return (
-    <section className="hero" id="top">
-      <div className="container hero__inner">
-        <div className="hero__text">
-          <p className="eyebrow">For plotted real-estate projects</p>
-          <h1>Show every plot on the real map, from one link</h1>
-          <p className="hero__lead">
-            Replace layout PDFs and inventory spreadsheets with a live, interactive
-            layout. Buyers explore the site on satellite view and see what is
-            available right now.
-          </p>
-          <div className="hero__actions">
-            <a className="btn btn--primary" href={getContactLink()}>
-              Book a demo <ArrowRight size={18} />
-            </a>
-            <a className="btn btn--ghost" href="#features">
-              See the features
-            </a>
+    <section id="top" className="bg-grid overflow-hidden">
+      {/* min-h keeps the hero one full screen tall, minus the 64px navbar */}
+      <div className="mx-auto grid min-h-[calc(100svh-4rem)] w-full max-w-275 items-center gap-16 px-5 py-16 md:grid-cols-2">
+        <div className="md:pl-12">
+          <h1 className="text-5xl leading-[1.15] font-bold md:text-6xl">
+            {HERO.title} <span className="text-brand">{HERO.titleAccent}</span>
+          </h1>
+          <p className="mt-10 max-w-sm leading-7 text-muted">{HERO.lead}</p>
+          <div className="mt-6">
+            <ButtonLink href="#pricing">Buy {SITE.name}</ButtonLink>
           </div>
+          <p className="mt-4 text-xs text-muted">{HERO.note}</p>
         </div>
 
-        <PlotIllustration />
+        <PhoneMockup />
       </div>
     </section>
   )

@@ -1,16 +1,16 @@
-import { ArrowRight } from 'lucide-react'
-import { getContactLink } from '../../data/homeContent'
+import { SITE } from '../../data/homeContent'
+import ButtonLink from '../ui/ButtonLink'
+import Reveal from '../ui/Reveal'
 
 function CallToAction() {
   return (
-    <section className="cta">
-      <div className="container cta__inner">
-        <h2>Ready to put your layout on the map?</h2>
-        <p>Send us your layout and see your own project as a live, shareable link.</p>
-        <a className="btn btn--light" href={getContactLink()}>
-          Book a demo <ArrowRight size={18} />
-        </a>
-      </div>
+    <section className="bg-panel px-5 pt-16 pb-24 text-center">
+      <Reveal>
+        <h2 className="text-4xl font-bold md:text-5xl">Ready to evolve your process?</h2>
+        <div className="mt-8">
+          <ButtonLink href="#pricing">Buy {SITE.name}</ButtonLink>
+        </div>
+      </Reveal>
     </section>
   )
 }

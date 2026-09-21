@@ -1,32 +1,64 @@
-import { NAV_LINKS, SITE, getContactLink } from '../../data/homeContent'
+import { Mail, MessageCircle, Phone } from 'lucide-react'
+import { FOOTER_LINKS, SITE } from '../../data/homeContent'
 import Logo from './Logo'
+
+// Contact buttons only appear for the details that are filled in
+const CONTACTS = [
+  { icon: Phone, label: 'Call us', href: SITE.phone && `tel:${SITE.phone}` },
+  { icon: Mail, label: 'Email us', href: SITE.email && `mailto:${SITE.email}` },
+  {
+    icon: MessageCircle,
+    label: 'WhatsApp us',
+    href: SITE.whatsapp && `https://wa.me/${SITE.whatsapp}`,
+  },
+].filter((contact) => contact.href)
+
+const COLUMN_TITLE = 'mb-4 text-xs font-bold uppercase tracking-[0.15em] text-muted'
 
 function Footer() {
   return (
-    <footer className="footer">
-      <div className="container footer__inner">
-        <div className="footer__brand">
-          <Logo />
-          <p>{SITE.tagline}</p>
+    <footer className="border-t border-line bg-[#0e0e0e] px-5 text-sm">
+      <div className="mx-auto grid w-full max-w-275 gap-10 py-10 md:grid-cols-[2fr_1fr_1fr]">
+        <div>
+          <Logo showTagline />
+          <p className="mt-4 max-w-64 leading-6 text-muted">{SITE.description}</p>
         </div>
 
-        <div className="footer__column">
-          <h4>Product</h4>
-          {NAV_LINKS.map((link) => (
-            <a key={link.href} href={link.href}>
-              {link.label}
-            </a>
-          ))}
-        </div>
+        <nav aria-label="Product">
+          <h3 className={COLUMN_TITLE}>Product</h3>
+          <ul className="space-y-3">
+            {FOOTER_LINKS.map((link) => (
+              <li key={link.href}>
+                <a href={link.href} className="text-white/80 hover:text-brand">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-        <div className="footer__column">
-          <h4>Contact</h4>
-          <a href={`mailto:${SITE.email}`}>{SITE.email}</a>
-          <a href={getContactLink()}>Book a demo</a>
+        <div>
+          <h3 className={COLUMN_TITLE}>Contact</h3>
+          <div className="flex gap-2.5">
+            {CONTACTS.map(({ icon: Icon, label, href }) => (
+              <a
+                key={label}
+                href={href}
+                aria-label={label}
+                className="inline-flex size-9 items-center justify-center rounded-full border border-line text-white/80 hover:border-brand hover:text-brand"
+              >
+                <Icon size={16} />
+              </a>
+            ))}
+          </div>
+          <h4 className="mt-5 mb-1 text-[11px] font-bold uppercase tracking-[0.15em] text-muted">
+            Office
+          </h4>
+          <p className="leading-6 text-white/80">{SITE.address}</p>
         </div>
       </div>
 
-      <p className="footer__copyright">
+      <p className="mx-auto w-full max-w-275 border-t border-line py-6 text-center text-xs text-muted">
         © {new Date().getFullYear()} {SITE.name}. All rights reserved.
       </p>
     </footer>
