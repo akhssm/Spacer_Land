@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { DEMOS, SITE } from '../../data/homeContent'
 import Reveal from '../ui/Reveal'
 import SectionHeading from '../ui/SectionHeading'
@@ -11,8 +12,8 @@ function Demos() {
         <div className="grid gap-5 md:grid-cols-2">
           {DEMOS.map((demo) => (
             <Reveal key={demo.name}>
-              <a
-                href={demo.href}
+              <Link
+                to={demo.href}
                 className="block overflow-hidden rounded-lg border border-line bg-card transition-colors hover:border-brand/60"
               >
                 {/* Cover: the project name over a soft glow in the project's colour */}
@@ -46,7 +47,7 @@ function Demos() {
                   </h3>
                   <p className="mt-1 text-sm text-muted">{demo.text}</p>
                 </div>
-              </a>
+              </Link>
             </Reveal>
           ))}
         </div>

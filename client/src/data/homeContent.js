@@ -47,36 +47,36 @@ export const STATEMENT = {
   accentLine: 'Just One Live Link',
 }
 
-// TODO: these are samples. Replace them with real projects, and set "href"
-// to each project's viewer link once the viewer is built.
+// TODO: these are samples. Replace them with real projects, and point "href"
+// at each project's own viewer link (/p/<shortCode>).
 export const DEMOS = [
   {
     name: 'Green Meadows',
     city: 'Hyderabad',
     text: 'Sample residential layout, fully interactive in 3D.',
     glow: '#b9822e',
-    href: '#',
+    href: '/p/demo',
   },
   {
     name: 'Demo Project',
     city: 'Hyderabad',
     text: 'Sample project that shows every feature in one place.',
     glow: '#1f8f8f',
-    href: '#',
+    href: '/p/demo',
   },
   {
     name: 'Orbit Industrial Park',
     city: 'Sangareddy',
     text: 'Sample industrial plots with live inventory updates.',
     glow: '#3f66c9',
-    href: '#',
+    href: '/p/demo',
   },
   {
     name: 'Hillcrest Farms',
     city: 'Vikarabad',
     text: 'Sample farm plots placed on the satellite map.',
     glow: '#5f9e3a',
-    href: '#',
+    href: '/p/demo',
   },
 ]
 
@@ -94,7 +94,7 @@ export const FEATURES = [
   { icon: Navigation, title: 'Directions to Site' },
   { icon: Box, title: '2D & 3D View' },
   { icon: ArrowLeftRight, title: 'Unit Switch' },
-  { icon: FileText, title: 'Brochure Download' },
+  { icon: FileText, title: 'Brochure Viewer' },
   { icon: Zap, title: 'Fast Loading' },
   { icon: Link2, title: 'One Link for Everything' },
   { icon: Smartphone, title: 'No App Needed' },
