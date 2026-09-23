@@ -9,36 +9,50 @@ import Compass from './Compass'
 const KEY = import.meta.env.VITE_MAPTILER_KEY
 
 const SOURCE = 'layout'
-const IS_PLOT = ['==', ['get', 'kind'], 'plot']
+const OVERLAY_SOURCE = 'plan-drawing'
+const IS_UNIT = ['!=', ['get', 'kind'], 'boundary'] // plots and amenities
 const IS_BOUNDARY = ['==', ['get', 'kind'], 'boundary']
+const IS_RAISED = ['all', IS_UNIT, ['>', ['get', 'height'], 0]]
 
-// How the layout is drawn. Each layer reads colours and labels from the GeoJSON properties.
+// How the layout is drawn. Each layer reads colours, opacities and labels from the GeoJSON properties.
 const LAYERS = [
   { id: 'boundary-fill', type: 'fill', filter: IS_BOUNDARY, paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.06 } },
   { id: 'boundary-line', type: 'line', filter: IS_BOUNDARY, paint: { 'line-color': '#ffffff', 'line-opacity': 0.6, 'line-width': 1.5 } },
-  { id: 'plots-fill', type: 'fill', filter: IS_PLOT, paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': 0.95 } },
+  { id: 'plots-fill', type: 'fill', filter: IS_UNIT, paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': ['get', 'fillOpacity'] } },
   {
     id: 'plots-3d',
     type: 'fill-extrusion',
-    filter: IS_PLOT,
+    filter: IS_RAISED,
     layout: { visibility: 'none' },
     paint: { 'fill-extrusion-color': ['get', 'fill'], 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-opacity': 0.9 },
   },
   {
     id: 'plots-line',
     type: 'line',
-    filter: IS_PLOT,
+    filter: IS_UNIT,
     paint: {
       'line-color': ['case', ['get', 'selected'], '#75c217', '#ffffff'],
       'line-width': ['case', ['get', 'selected'], 3, 1],
+      'line-opacity': ['case', ['get', 'selected'], 1, ['get', 'outlineOpacity']],
     },
   },
   {
     id: 'plots-label',
     type: 'symbol',
-    filter: IS_PLOT,
-    layout: { 'text-field': ['get', 'number'], 'text-size': 11, 'text-font': ['Open Sans Bold'], 'text-allow-overlap': true },
-    paint: { 'text-color': ['get', 'labelColour'] },
+    filter: IS_UNIT,
+    layout: {
+      'text-field': ['get', 'label'],
+      'text-size': ['get', 'labelSize'],
+      'text-font': ['Open Sans Bold'],
+      'text-allow-overlap': true,
+      'text-max-width': 8,
+    },
+    paint: {
+      'text-color': ['get', 'labelColour'],
+      'text-opacity': ['get', 'labelOpacity'],
+      'text-halo-color': 'rgba(0, 0, 0, 0.75)',
+      'text-halo-width': ['get', 'labelHalo'],
+    },
   },
 ]
 const CLICKABLE_LAYERS = ['plots-fill', 'plots-3d']
@@ -110,6 +124,13 @@ function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition,
     map.addControl(new AttributionControlMLGL({ compact: true }), 'bottom-left')
 
     map.on('load', () => {
+      // The plan drawing, if the project has one, sits under everything else
+      const { overlay } = project.layout
+      if (overlay) {
+        map.addSource(OVERLAY_SOURCE, { type: 'image', url: overlay.url, coordinates: overlay.coordinates })
+        map.addLayer({ id: 'plan-drawing', type: 'raster', source: OVERLAY_SOURCE, paint: { 'raster-opacity': 0.96, 'raster-fade-duration': 0 } })
+      }
+
       map.addSource(SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       LAYERS.forEach((layer) => map.addLayer({ ...layer, source: SOURCE }))
 

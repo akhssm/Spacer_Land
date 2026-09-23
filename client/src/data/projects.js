@@ -1,6 +1,13 @@
 // Sample projects, in the shape the Project model will have in MongoDB (Milestone 2).
 // Every coordinate is in GeoJSON order: [longitude, latitude].
 
+import {
+  IRA_TOWERS_AMENITIES,
+  IRA_TOWERS_BOUNDARY,
+  IRA_TOWERS_OVERLAY,
+  IRA_TOWERS_PLOTS,
+} from './iraTowersLayout'
+
 // Rough metres per degree around Hyderabad, used to draw sample shapes
 const METRES_PER_DEG_LAT = 111_000
 const METRES_PER_DEG_LNG = 106_000
@@ -48,29 +55,25 @@ export const PROJECTS = [
     shortCode: 'ira-towers',
     name: 'Ira Towers',
     type: 'apartments',
-    unitLabel: 'Tower',
-    unitHeight: 30, // metres, used when the map is tilted into 3D
+    unitLabel: 'Flat',
+    unitHeight: 40, // metres, used when the map is tilted into 3D
     city: 'Hyderabad',
-    address: 'G96J+J2V, Setwinabad, Nizampet, Hyderabad, Telangana 500090',
+    address: 'G96J+J2V, ASR Nagar, Nizampet, Hyderabad, Telangana 500090',
     description:
-      'Luxury high-rise 2 & 3 BHK apartments by V4 Ventures in ASR Nagar, Nizampet. Tower positions on the map are samples until the site plan is traced.',
+      'Luxury high-rise 2 & 3 BHK apartments by V4 Ventures in ASR Nagar, Nizampet: three blocks with 36 flats per floor and an 18,648 sq.ft clubhouse.',
     location: [78.380047, 17.511612], // decoded from the plus code G96J+J2V
     whatsapp: '',
-    zones: ['Phase 1', 'Phase 2'],
+    zones: ['Block A', 'Block B', 'Block C', 'Amenities'],
     brochure: {
       // 24 pages rendered from the PDF with scripts/brochure-pages.py
       pages: Array.from({ length: 24 }, (_, index) => `/projects/ira-towers/brochure/page-${index + 1}.webp`),
     },
     layout: {
-      // TODO: sample shapes. Replace with the real site plan traced over the map.
-      sample: true,
-      boundary: rectangle([78.3793, 17.5123], 150, 140),
-      plots: [
-        { number: 'A', zone: 'Phase 1', status: 'available', polygon: rectangle([78.3796, 17.512], 30, 24) },
-        { number: 'B', zone: 'Phase 1', status: 'sold', polygon: rectangle([78.3802, 17.512], 30, 24) },
-        { number: 'C', zone: 'Phase 2', status: 'hold', polygon: rectangle([78.3796, 17.5114], 30, 24) },
-        { number: 'D', zone: 'Phase 2', status: 'reserved', polygon: rectangle([78.3802, 17.5114], 30, 24) },
-      ],
+      // Traced from the brochure's master plan and fitted to the satellite image
+      sample: false,
+      overlay: IRA_TOWERS_OVERLAY, // the plan drawing itself, draped over the map
+      boundary: IRA_TOWERS_BOUNDARY,
+      plots: [...IRA_TOWERS_PLOTS, ...IRA_TOWERS_AMENITIES],
     },
   },
   {

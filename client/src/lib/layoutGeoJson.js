@@ -1,5 +1,5 @@
 // Turns a project's layout into GeoJSON the map can draw in one go.
-// Each plot becomes a Feature whose properties carry its colour and label.
+// Each shape becomes a Feature whose properties carry its colour and label.
 
 const PLAIN_FILL = '#eadfba'
 const STATUS_FILL = { available: '#2f9e6b', sold: '#d9534f', hold: '#e0a02f', reserved: '#3f83d1' }
@@ -13,21 +13,33 @@ function fillFor(plot, colorMode, zones) {
 }
 
 export function buildLayoutGeoJson(project, colorMode, selectedPlot) {
-  const { boundary, plots } = project.layout
-  const labelColour = colorMode === 'status' ? '#ffffff' : '#3b3a2a'
+  const { boundary, plots, overlay } = project.layout
+  // When the plan drawing is draped on the map, plain mode shows the drawing itself
+  // and our fills and numbers only appear when colouring by zone or status.
+  const drawingShown = Boolean(overlay) && colorMode === 'plain'
 
-  const features = plots.map((plot) => ({
-    type: 'Feature',
-    properties: {
-      kind: 'plot',
-      number: plot.number,
-      fill: fillFor(plot, colorMode, project.zones),
-      selected: selectedPlot?.number === plot.number,
-      height: project.unitHeight ?? DEFAULT_HEIGHT_METRES,
-      labelColour,
-    },
-    geometry: { type: 'Polygon', coordinates: [plot.polygon] },
-  }))
+  const features = plots.map((plot) => {
+    const isAmenity = plot.kind === 'amenity'
+    const coloured = colorMode !== 'plain'
+    return {
+      type: 'Feature',
+      properties: {
+        kind: isAmenity ? 'amenity' : 'plot',
+        number: plot.number,
+        fill: fillFor(plot, colorMode, project.zones),
+        fillOpacity: isAmenity ? 0 : drawingShown ? 0 : 0.95,
+        outlineOpacity: isAmenity ? 0 : drawingShown ? 0.35 : 1,
+        selected: selectedPlot?.number === plot.number,
+        height: plot.height ?? (isAmenity ? 0 : (project.unitHeight ?? DEFAULT_HEIGHT_METRES)),
+        label: plot.number,
+        labelOpacity: isAmenity ? 1 : drawingShown ? 0 : 1,
+        labelColour: isAmenity || (coloured && colorMode === 'status') ? '#ffffff' : '#3b3a2a',
+        labelHalo: isAmenity ? 1.2 : 0,
+        labelSize: isAmenity ? 10 : 11,
+      },
+      geometry: { type: 'Polygon', coordinates: [plot.polygon] },
+    }
+  })
 
   if (boundary) {
     features.unshift({

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ExternalLink, Search, X } from 'lucide-react'
-import { areaSqMetres, directionsUrl, formatArea } from '../../lib/geo'
+import { SQ_FT_PER_SQ_M, areaSqMetres, directionsUrl, formatArea } from '../../lib/geo'
 
 const STATUS_PILL = {
   available: 'bg-available',
@@ -39,13 +39,18 @@ export function StatusPill({ status }) {
 
 // Details of the plot the visitor clicked or searched for
 export function PlotCard({ project, plot, showStatus, onClose }) {
-  const area = formatArea(areaSqMetres(plot.polygon))
+  const isAmenity = plot.kind === 'amenity'
+  // Prefer the size printed on the plan (saleable area); otherwise measure the shape.
+  // Amenities only get an area if the plan states one.
+  const sqMetres = plot.areaSqFt ? plot.areaSqFt / SQ_FT_PER_SQ_M : isAmenity ? null : areaSqMetres(plot.polygon)
+  const area = sqMetres && formatArea(sqMetres)
+
   return (
-    <Panel title={`${project.unitLabel} ${plot.number}`} onClose={onClose}>
+    <Panel title={isAmenity ? plot.number : `${project.unitLabel} ${plot.number}`} onClose={onClose}>
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-muted">
         <dt>Zone</dt>
         <dd className="text-white">{plot.zone}</dd>
-        {showStatus && (
+        {showStatus && !isAmenity && (
           <>
             <dt>Status</dt>
             <dd>
@@ -53,13 +58,17 @@ export function PlotCard({ project, plot, showStatus, onClose }) {
             </dd>
           </>
         )}
-        <dt>Area</dt>
-        <dd className="text-white">
-          {area.sqft}
-          <span className="block text-xs text-muted">
-            {area.sqyd} · {area.sqm}
-          </span>
-        </dd>
+        {area && (
+          <>
+            <dt>Area</dt>
+            <dd className="text-white">
+              {area.sqft}
+              <span className="block text-xs text-muted">
+                {area.sqyd} · {area.sqm}
+              </span>
+            </dd>
+          </>
+        )}
       </dl>
     </Panel>
   )
@@ -73,14 +82,14 @@ export function SearchPanel({ project, onSelect, onClose }) {
   )
 
   return (
-    <Panel title={`Search ${project.unitLabel.toLowerCase()}s`} onClose={onClose}>
+    <Panel title="Search" onClose={onClose}>
       <label className="flex items-center gap-2 rounded-lg border border-line bg-base px-3 py-2">
         <Search size={16} className="text-muted" />
         <input
           autoFocus
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder={`${project.unitLabel} number`}
+          placeholder={`${project.unitLabel} number or amenity`}
           className="w-full bg-transparent outline-none placeholder:text-muted"
         />
       </label>
@@ -92,9 +101,7 @@ export function SearchPanel({ project, onSelect, onClose }) {
               onClick={() => onSelect(plot)}
               className="flex w-full cursor-pointer items-center justify-between rounded-md px-2 py-1.5 text-left hover:bg-white/5"
             >
-              <span>
-                {project.unitLabel} {plot.number}
-              </span>
+              <span>{plot.kind === 'amenity' ? plot.number : `${project.unitLabel} ${plot.number}`}</span>
               <span className="text-xs text-muted">{plot.zone}</span>
             </button>
           </li>
