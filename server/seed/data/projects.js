@@ -1,12 +1,14 @@
-// Sample projects, in the shape the Project model will have in MongoDB (Milestone 2).
+// Seed data: the projects loaded into MongoDB by `npm run seed`.
 // Every coordinate is in GeoJSON order: [longitude, latitude].
 
+import { getIraFlatDetails } from './iraTowersFlats.js'
 import {
   IRA_TOWERS_AMENITIES,
+  IRA_TOWERS_BLOCKS,
   IRA_TOWERS_BOUNDARY,
   IRA_TOWERS_OVERLAY,
   IRA_TOWERS_PLOTS,
-} from './iraTowersLayout'
+} from './iraTowersLayout.js'
 
 // Rough metres per degree around Hyderabad, used to draw sample shapes
 const METRES_PER_DEG_LAT = 111_000
@@ -63,6 +65,7 @@ export const PROJECTS = [
       'Luxury high-rise 2 & 3 BHK apartments by V4 Ventures in ASR Nagar, Nizampet: three blocks with 36 flats per floor and an 18,648 sq.ft clubhouse.',
     location: [78.380047, 17.511612], // decoded from the plus code G96J+J2V
     whatsapp: '',
+    theme: { accent: '#3f66c9' }, // card colour on the home page
     zones: ['Block A', 'Block B', 'Block C', 'Amenities'],
     brochure: {
       // 24 pages rendered from the PDF with scripts/brochure-pages.py
@@ -73,7 +76,12 @@ export const PROJECTS = [
       sample: false,
       overlay: IRA_TOWERS_OVERLAY, // the plan drawing itself, draped over the map
       boundary: IRA_TOWERS_BOUNDARY,
-      plots: [...IRA_TOWERS_PLOTS, ...IRA_TOWERS_AMENITIES],
+      blocks: IRA_TOWERS_BLOCKS,
+      // Each flat's shape from the master plan, plus its type, facing, rooms and plan image
+      plots: [
+        ...IRA_TOWERS_PLOTS.map((plot) => ({ ...plot, ...getIraFlatDetails(plot.number) })),
+        ...IRA_TOWERS_AMENITIES,
+      ],
     },
   },
   {
@@ -87,6 +95,7 @@ export const PROJECTS = [
     description: 'A sample plotted layout with 24 plots in two blocks, used to show every viewer feature.',
     location: [78.1355, 17.4547],
     whatsapp: '',
+    theme: { accent: '#b9822e' },
     zones: ['Block A', 'Block B'],
     brochure: {
       // One image per page. Real brochures will be PDFs converted to page images on the server.
@@ -120,7 +129,3 @@ export const PROJECTS = [
     },
   },
 ]
-
-export function getProject(shortCode) {
-  return PROJECTS.find((project) => project.shortCode === shortCode)
-}

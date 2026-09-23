@@ -3,13 +3,15 @@ import { Link, useParams } from 'react-router-dom'
 import { BookOpen, Image, Info, LocateFixed, MessageCircle, Navigation, Search } from 'lucide-react'
 import BrochureViewer from '../components/viewer/BrochureViewer'
 import MapView from '../components/viewer/MapView'
-import { InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
+import { BlockChips, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
+import { fetchProject } from '../api/projects'
 import { SITE, getContactLink } from '../data/homeContent'
-import { getProject } from '../data/projects'
 import { directionsUrl } from '../lib/geo'
 
 const PILL =
   'inline-flex items-center justify-center gap-2 rounded-full bg-[#1c1c1c]/90 px-5 py-3 text-sm font-semibold backdrop-blur transition-colors'
+
+const NO_BLOCKS = [] // one shared empty list, so it never counts as a change
 
 // Written out in full so Tailwind can find the classes
 const STATUS_SWATCH = {
@@ -30,27 +32,47 @@ function Toggle({ label, on, onChange }) {
   )
 }
 
-// The public project page: /p/:shortCode
+// The public project page: /p/:shortCode. The key makes React start the page
+// fresh (no stale project, selection or panels) when the code in the URL changes.
 function Viewer() {
   const { shortCode } = useParams()
-  const project = getProject(shortCode)
+  return <ProjectViewer key={shortCode} shortCode={shortCode} />
+}
 
+function ProjectViewer({ shortCode }) {
+  const [project, setProject] = useState(null)
+  const [loadError, setLoadError] = useState(null) // an Error with .status, or null
   const [openPanel, setOpenPanel] = useState(null) // 'brochure' | 'search' | 'info' | null
   const [colorMode, setColorMode] = useState('plain') // 'plain' | 'zones' | 'status'
   const [selectedPlot, setSelectedPlot] = useState(null)
+  const [selectedBlock, setSelectedBlock] = useState(null) // a block name, or null for all
   const [userPosition, setUserPosition] = useState(null)
   const [gpsOn, setGpsOn] = useState(false)
   const [toast, setToast] = useState('')
   const gpsWatchRef = useRef(null) // id returned by watchPosition, needed to stop it
 
+  // Load the project from the API
+  useEffect(() => {
+    let cancelled = false
+
+    fetchProject(shortCode)
+      .then((data) => !cancelled && setProject(data))
+      .catch((error) => !cancelled && setLoadError(error))
+
+    return () => {
+      cancelled = true // ignore a late answer if the visitor already moved on
+    }
+  }, [shortCode])
+
   // Browser tab shows the project name while this page is open
   useEffect(() => {
+    if (!project && !loadError) return
     const previous = document.title
     document.title = `${project ? project.name : 'Project not found'} | ${SITE.name}`
     return () => {
       document.title = previous
     }
-  }, [project])
+  }, [project, loadError])
 
   // Stop watching GPS when the page closes
   useEffect(() => {
@@ -64,19 +86,44 @@ function Viewer() {
     setTimeout(() => setToast(''), 2500)
   }
 
-  const selectPlot = useCallback((plot) => {
-    setSelectedPlot(plot)
-    if (plot) setOpenPanel(null)
+  const blocks = project?.layout.blocks ?? NO_BLOCKS
+
+  // Choosing a flat also chooses its block, so the other blocks fade back
+  const selectPlot = useCallback(
+    (plot) => {
+      setSelectedPlot(plot)
+      if (plot) {
+        setOpenPanel(null)
+        if (blocks.some((block) => block.name === plot.zone)) setSelectedBlock(plot.zone)
+      }
+    },
+    [blocks],
+  )
+
+  const selectBlock = useCallback((name) => {
+    setSelectedBlock(name)
+    setSelectedPlot(null)
   }, [])
 
-  if (!project) {
+  if (loadError) {
+    const notFound = loadError.status === 404
     return (
       <main className="flex min-h-svh flex-col items-center justify-center gap-4 px-5 text-center">
-        <h1 className="text-3xl font-bold">Project not found</h1>
-        <p className="text-muted">There is no project with the code “{shortCode}”.</p>
+        <h1 className="text-3xl font-bold">{notFound ? 'Project not found' : 'Could not load the project'}</h1>
+        <p className="text-muted">
+          {notFound ? `There is no project with the code “${shortCode}”.` : loadError.message}
+        </p>
         <Link to="/" className="text-brand underline underline-offset-4">
           Back to home
         </Link>
+      </main>
+    )
+  }
+
+  if (!project) {
+    return (
+      <main className="flex min-h-svh items-center justify-center bg-base text-sm text-muted">
+        Loading project…
       </main>
     )
   }
@@ -123,9 +170,12 @@ function Viewer() {
   }
 
   const hasBrochure = project.brochure.pages.length > 0
-  const whatsappLink = project.whatsapp
-    ? `https://wa.me/${project.whatsapp}?text=${encodeURIComponent(`Hi, I am interested in ${project.name}.`)}`
-    : getContactLink()
+  // The flat panel sits on the right on desktop, so other controls move out from under it
+  const sidePanelOpen = Boolean(selectedPlot?.plan) && !openPanel
+  // WhatsApp link with a ready-made message, or the site's contact link if the project has no number
+  const enquiryLink = (message) =>
+    project.whatsapp ? `https://wa.me/${project.whatsapp}?text=${encodeURIComponent(message)}` : getContactLink()
+  const whatsappLink = enquiryLink(`Hi, I am interested in ${project.name}.`)
 
   // Tools without an onClick or href are not built yet and show as disabled
   const tools = [
@@ -143,10 +193,19 @@ function Viewer() {
         project={project}
         colorMode={colorMode}
         selectedPlot={selectedPlot}
+        selectedBlock={selectedBlock}
         onSelectPlot={selectPlot}
+        onSelectBlock={selectBlock}
         userPosition={userPosition}
         onShare={share}
+        sidePanelOpen={sidePanelOpen}
       />
+
+      {blocks.length > 0 && (
+        <div className="absolute top-44 left-5 md:top-5 md:left-1/2 md:-translate-x-1/2">
+          <BlockChips blocks={blocks} selected={selectedBlock} onSelect={selectBlock} />
+        </div>
+      )}
 
       <header className="absolute top-5 left-5">
         <h1 className="text-2xl font-bold tracking-wider uppercase drop-shadow md:text-3xl">{project.name}</h1>
@@ -166,11 +225,15 @@ function Viewer() {
         </ul>
       )}
 
-      <div className="absolute right-5 bottom-5 left-5 flex flex-col items-stretch gap-2 md:left-auto md:items-end">
+      <div
+        className={`absolute bottom-5 left-5 flex flex-col items-stretch gap-2 transition-[right] md:left-auto md:items-end ${
+          sidePanelOpen ? 'right-5 md:right-104' : 'right-5'
+        }`}
+      >
         <div className="flex flex-wrap justify-end gap-2">
           <Toggle label="Zones" on={colorMode === 'zones'} onChange={() => setColorMode(colorMode === 'zones' ? 'plain' : 'zones')} />
           <Toggle label="Status" on={colorMode === 'status'} onChange={() => setColorMode(colorMode === 'status' ? 'plain' : 'status')} />
-          <a href={whatsappLink} target="_blank" rel="noreferrer" className={`${PILL} hover:bg-[#2a2a2a]`}>
+          <a href={whatsappLink} target="_blank" rel="noreferrer" className={`${PILL} hover:bg-line`}>
             <MessageCircle size={18} className="text-[#25d366]" />
             <span className="text-left leading-tight">
               WhatsApp
@@ -182,7 +245,7 @@ function Viewer() {
         <nav aria-label="Project tools" className="grid grid-cols-3 gap-2">
           {tools.map(({ icon: Icon, label, onClick, href, active }) => {
             const enabled = Boolean(onClick || href)
-            const className = `${PILL} ${enabled ? 'cursor-pointer hover:bg-[#2a2a2a]' : 'cursor-not-allowed opacity-40'} ${active ? 'text-brand' : ''}`
+            const className = `${PILL} ${enabled ? 'cursor-pointer hover:bg-line' : 'cursor-not-allowed opacity-40'} ${active ? 'text-brand' : ''}`
             return href ? (
               <a key={label} href={href} target="_blank" rel="noreferrer" className={className}>
                 <Icon size={16} /> {label}
@@ -197,7 +260,17 @@ function Viewer() {
       </div>
 
       {selectedPlot && !openPanel && (
-        <PlotCard project={project} plot={selectedPlot} showStatus={colorMode === 'status'} onClose={() => setSelectedPlot(null)} />
+        selectedPlot.plan ? (
+          <FlatPanel
+            project={project}
+            plot={selectedPlot}
+            showStatus={colorMode === 'status'}
+            enquiryLink={enquiryLink}
+            onClose={() => setSelectedPlot(null)}
+          />
+        ) : (
+          <PlotCard project={project} plot={selectedPlot} showStatus={colorMode === 'status'} onClose={() => setSelectedPlot(null)} />
+        )
       )}
       {openPanel === 'search' && <SearchPanel project={project} onSelect={selectPlot} onClose={() => setOpenPanel(null)} />}
       {openPanel === 'info' && <InfoPanel project={project} onClose={() => setOpenPanel(null)} />}

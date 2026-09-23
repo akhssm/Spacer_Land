@@ -10,8 +10,9 @@ const KEY = import.meta.env.VITE_MAPTILER_KEY
 
 const SOURCE = 'layout'
 const OVERLAY_SOURCE = 'plan-drawing'
-const IS_UNIT = ['!=', ['get', 'kind'], 'boundary'] // plots and amenities
+const IS_UNIT = ['any', ['==', ['get', 'kind'], 'plot'], ['==', ['get', 'kind'], 'amenity']]
 const IS_BOUNDARY = ['==', ['get', 'kind'], 'boundary']
+const IS_BLOCK = ['==', ['get', 'kind'], 'block']
 const IS_RAISED = ['all', IS_UNIT, ['>', ['get', 'height'], 0]]
 
 // How the layout is drawn. Each layer reads colours, opacities and labels from the GeoJSON properties.
@@ -19,6 +20,9 @@ const LAYERS = [
   { id: 'boundary-fill', type: 'fill', filter: IS_BOUNDARY, paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.06 } },
   { id: 'boundary-line', type: 'line', filter: IS_BOUNDARY, paint: { 'line-color': '#ffffff', 'line-opacity': 0.6, 'line-width': 1.5 } },
   { id: 'plots-fill', type: 'fill', filter: IS_UNIT, paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': ['get', 'fillOpacity'] } },
+  // Darkens the blocks that are not chosen; invisible otherwise, but still clickable
+  { id: 'blocks-dim', type: 'fill', filter: IS_BLOCK, paint: { 'fill-color': '#0a0a0a', 'fill-opacity': ['case', ['get', 'dim'], 0.62, 0] } },
+  { id: 'blocks-line', type: 'line', filter: IS_BLOCK, paint: { 'line-color': '#75c217', 'line-width': 2.5, 'line-opacity': ['case', ['get', 'selected'], 1, 0] } },
   {
     id: 'plots-3d',
     type: 'fill-extrusion',
@@ -56,9 +60,13 @@ const LAYERS = [
   },
 ]
 const CLICKABLE_LAYERS = ['plots-fill', 'plots-3d']
+const BLOCK_LAYERS = ['blocks-dim']
+
+// Where the map should keep its centre when a side panel covers part of it
+const panelOffset = () => (window.innerWidth >= 768 ? [-200, -40] : [0, -140])
 
 const ROUND_BUTTON =
-  'inline-flex size-12 cursor-pointer items-center justify-center rounded-full bg-[#1c1c1c]/90 text-white backdrop-blur transition-colors hover:bg-[#2a2a2a]'
+  'inline-flex size-12 cursor-pointer items-center justify-center rounded-full bg-[#1c1c1c]/90 text-white backdrop-blur transition-colors hover:bg-line'
 
 // Shown until a MapTiler key is added to client/.env
 function MissingKey() {
@@ -77,12 +85,24 @@ function MissingKey() {
 }
 
 // The live satellite map with the project's layout drawn on it.
-function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition, onShare }) {
+function MapView({
+  project,
+  colorMode,
+  selectedPlot,
+  selectedBlock,
+  onSelectPlot,
+  onSelectBlock,
+  userPosition,
+  onShare,
+  sidePanelOpen = false,
+}) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
   const userMarkerRef = useRef(null)
   const pannedToUser = useRef(false)
-  const selectRef = useRef(onSelectPlot) // latest handler, so the map's click listener is bound once
+  // Latest handlers, so the map's click listener is bound once
+  const selectRef = useRef(onSelectPlot)
+  const selectBlockRef = useRef(onSelectBlock)
 
   const [ready, setReady] = useState(false) // true once the map style and layers are loaded
   const [heading, setHeading] = useState(0)
@@ -90,7 +110,8 @@ function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition,
 
   useEffect(() => {
     selectRef.current = onSelectPlot
-  }, [onSelectPlot])
+    selectBlockRef.current = onSelectBlock
+  }, [onSelectPlot, onSelectBlock])
 
   // Zoom so the whole layout is in view
   const fitProject = useCallback(
@@ -134,14 +155,23 @@ function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition,
       map.addSource(SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       LAYERS.forEach((layer) => map.addLayer({ ...layer, source: SOURCE }))
 
-      // A click on a plot selects it; a click anywhere else clears the selection
+      // A click on a plot selects it, a click on a block chooses that block,
+      // and a click anywhere else clears the plot selection
       map.on('click', (event) => {
         const hits = map.queryRenderedFeatures(event.point, { layers: CLICKABLE_LAYERS })
-        const plot = hits.length && project.layout.plots.find((p) => p.number === hits[0].properties.number)
-        selectRef.current(plot || null)
+        if (hits.length) {
+          selectRef.current(project.layout.plots.find((p) => p.number === hits[0].properties.number) || null)
+          return
+        }
+        const blockHits = map.queryRenderedFeatures(event.point, { layers: BLOCK_LAYERS })
+        if (blockHits.length) {
+          selectBlockRef.current(blockHits[0].properties.name)
+          return
+        }
+        selectRef.current(null)
       })
       map.on('mousemove', (event) => {
-        const hits = map.queryRenderedFeatures(event.point, { layers: CLICKABLE_LAYERS })
+        const hits = map.queryRenderedFeatures(event.point, { layers: [...CLICKABLE_LAYERS, ...BLOCK_LAYERS] })
         map.getCanvas().style.cursor = hits.length ? 'pointer' : ''
       })
 
@@ -161,13 +191,31 @@ function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition,
   // 2. Push the layout to the map whenever colours or the selection change
   useEffect(() => {
     if (!ready) return
-    mapRef.current.getSource(SOURCE).setData(buildLayoutGeoJson(project, colorMode, selectedPlot))
-  }, [ready, project, colorMode, selectedPlot])
+    mapRef.current
+      .getSource(SOURCE)
+      .setData(buildLayoutGeoJson(project, { colorMode, selectedPlot, selectedBlock }))
+  }, [ready, project, colorMode, selectedPlot, selectedBlock])
 
   // 3. Move to a plot when it is chosen from search or by a click
   useEffect(() => {
-    if (ready && selectedPlot) mapRef.current.easeTo({ center: centroid(selectedPlot.polygon) })
+    if (ready && selectedPlot) {
+      mapRef.current.easeTo({ center: centroid(selectedPlot.polygon), offset: panelOffset() })
+    }
   }, [ready, selectedPlot])
+
+  // 3b. Zoom to a block when it is chosen
+  useEffect(() => {
+    if (!ready || !selectedBlock) return
+    const block = project.layout.blocks?.find((b) => b.name === selectedBlock)
+    if (!block) return
+    const bounds = new LngLatBounds()
+    block.polygon.forEach((point) => bounds.extend(point))
+    const desktop = window.innerWidth >= 768
+    mapRef.current.fitBounds(bounds, {
+      padding: { top: 90, bottom: desktop ? 120 : 260, left: 40, right: desktop ? 440 : 40 },
+      duration: 700,
+    })
+  }, [ready, project, selectedBlock])
 
   // 4. Show where the visitor is, and go there the first time GPS reports it
   useEffect(() => {
@@ -231,7 +279,11 @@ function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition,
         <Compass heading={heading} onReset={() => mapRef.current?.easeTo({ bearing: 0 })} />
       </div>
 
-      <div className="absolute right-5 bottom-40 flex flex-col gap-2 md:bottom-48">
+      <div
+        className={`absolute bottom-40 flex flex-col gap-2 transition-[right] md:bottom-48 ${
+          sidePanelOpen ? 'right-5 md:right-104' : 'right-5'
+        }`}
+      >
         <button
           type="button"
           onClick={toggle3D}

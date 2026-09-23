@@ -1,6 +1,115 @@
 import { useState } from 'react'
-import { ExternalLink, Search, X } from 'lucide-react'
+import { Compass, ExternalLink, MessageCircle, Search, X } from 'lucide-react'
 import { SQ_FT_PER_SQ_M, areaSqMetres, directionsUrl, formatArea } from '../../lib/geo'
+
+const CHIP =
+  'inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors'
+
+// "All blocks / Block A / Block B / Block C" switcher
+export function BlockChips({ blocks, selected, onSelect }) {
+  const options = [{ name: null, label: 'All blocks' }, ...blocks.map((b) => ({ name: b.name, label: b.name }))]
+  return (
+    <div role="group" aria-label="Choose a block" className="flex flex-wrap gap-1.5">
+      {options.map(({ name, label }) => {
+        const active = selected === name
+        return (
+          <button
+            key={label}
+            type="button"
+            onClick={() => onSelect(name)}
+            aria-pressed={active}
+            className={`${CHIP} ${
+              active
+                ? 'border-brand bg-brand text-[#0f0f0f]'
+                : 'border-line bg-[#1c1c1c]/90 text-white backdrop-blur hover:border-brand'
+            }`}
+          >
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// Everything about one flat: type, facing, area, its floor plan and every room's size
+export function FlatPanel({ project, plot, showStatus, enquiryLink, onClose }) {
+  const area = formatArea(plot.areaSqFt / SQ_FT_PER_SQ_M)
+  const title = `${project.unitLabel} ${plot.number}`
+  const message = `Hi, I am interested in ${title} (${plot.bhk}, ${plot.facing} facing, ${area.sqft}) at ${project.name}.`
+
+  return (
+    <aside
+      aria-label={title}
+      className="absolute inset-x-3 bottom-3 z-20 max-h-[75svh] overflow-y-auto rounded-xl border border-line bg-panel/95 p-5 text-sm backdrop-blur md:inset-x-auto md:top-20 md:right-5 md:bottom-5 md:max-h-none md:w-96"
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold">{title}</h2>
+          <p className="text-xs text-muted">
+            {plot.zone} · {project.name}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={`Close ${title}`}
+          className="cursor-pointer rounded-full p-1 text-muted hover:text-white"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">{plot.bhk}</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
+          <Compass size={12} /> {plot.facing} facing
+        </span>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">{area.sqft}</span>
+        {showStatus && <StatusPill status={plot.status} />}
+      </div>
+
+      <a href={plot.plan} target="_blank" rel="noreferrer" title="Open the plan full size">
+        <img
+          src={plot.plan}
+          alt={`Floor plan of ${title}`}
+          className="w-full rounded-lg border border-line bg-white"
+        />
+      </a>
+      <p className="mt-1.5 text-[11px] text-muted">Typical floor plan. Tap the plan to open it full size.</p>
+
+      <h3 className="mt-5 mb-2 text-xs font-bold tracking-[0.15em] text-muted uppercase">Rooms</h3>
+      <table className="w-full">
+        <tbody>
+          {plot.rooms.map((roomItem, index) => (
+            <tr key={index} className="border-t border-line">
+              <td className="py-1.5 pr-3 text-white/85">{roomItem.name}</td>
+              <td className="py-1.5 text-right font-semibold tabular-nums">{roomItem.size}</td>
+            </tr>
+          ))}
+          <tr className="border-t border-line">
+            <td className="py-1.5 pr-3 text-white/85">Total area</td>
+            <td className="py-1.5 text-right font-semibold">
+              {area.sqft}
+              <span className="block text-xs font-normal text-muted">
+                {area.sqyd} · {area.sqm}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <a
+        href={enquiryLink(message)}
+        target="_blank"
+        rel="noreferrer"
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-[#0f0f0f] hover:bg-brand-dark"
+      >
+        <MessageCircle size={16} /> Enquire about this flat
+      </a>
+    </aside>
+  )
+}
 
 const STATUS_PILL = {
   available: 'bg-available',
@@ -12,7 +121,7 @@ const STATUS_PILL = {
 // Shared frame for the small panels that slide in at the bottom-left
 function Panel({ title, onClose, children }) {
   return (
-    <aside className="absolute bottom-40 left-5 z-10 w-[calc(100%-2.5rem)] rounded-xl border border-line bg-[#141414]/95 p-4 text-sm backdrop-blur md:bottom-5 md:w-80">
+    <aside className="absolute bottom-40 left-5 z-10 w-[calc(100%-2.5rem)] rounded-xl border border-line bg-panel/95 p-4 text-sm backdrop-blur md:bottom-5 md:w-80">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-bold">{title}</h2>
         <button

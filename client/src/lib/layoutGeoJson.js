@@ -2,9 +2,11 @@
 // Each shape becomes a Feature whose properties carry its colour and label.
 
 const PLAIN_FILL = '#eadfba'
+const DIMMED_FILL = '#5f5f58'
 const STATUS_FILL = { available: '#2f9e6b', sold: '#d9534f', hold: '#e0a02f', reserved: '#3f83d1' }
 const ZONE_FILLS = ['#eadfba', '#b9dba9', '#f3c6a0', '#a9c8e8', '#d9b8e8']
 const DEFAULT_HEIGHT_METRES = 3
+const DIM_FACTOR = 0.3
 
 function fillFor(plot, colorMode, zones) {
   if (colorMode === 'status') return STATUS_FILL[plot.status]
@@ -12,33 +14,49 @@ function fillFor(plot, colorMode, zones) {
   return PLAIN_FILL
 }
 
-export function buildLayoutGeoJson(project, colorMode, selectedPlot) {
-  const { boundary, plots, overlay } = project.layout
+export function buildLayoutGeoJson(project, { colorMode, selectedPlot, selectedBlock }) {
+  const { boundary, plots, overlay, blocks = [] } = project.layout
   // When the plan drawing is draped on the map, plain mode shows the drawing itself
   // and our fills and numbers only appear when colouring by zone or status.
   const drawingShown = Boolean(overlay) && colorMode === 'plain'
 
   const features = plots.map((plot) => {
     const isAmenity = plot.kind === 'amenity'
-    const coloured = colorMode !== 'plain'
+    // With one block chosen, flats in the other blocks fade back
+    const dimmed = Boolean(selectedBlock) && !isAmenity && plot.zone !== selectedBlock
+    const dim = dimmed ? DIM_FACTOR : 1
     return {
       type: 'Feature',
       properties: {
         kind: isAmenity ? 'amenity' : 'plot',
         number: plot.number,
-        fill: fillFor(plot, colorMode, project.zones),
+        fill: dimmed ? DIMMED_FILL : fillFor(plot, colorMode, project.zones),
         fillOpacity: isAmenity ? 0 : drawingShown ? 0 : 0.95,
-        outlineOpacity: isAmenity ? 0 : drawingShown ? 0.35 : 1,
+        outlineOpacity: (isAmenity ? 0 : drawingShown ? 0.35 : 1) * dim,
         selected: selectedPlot?.number === plot.number,
         height: plot.height ?? (isAmenity ? 0 : (project.unitHeight ?? DEFAULT_HEIGHT_METRES)),
         label: plot.number,
-        labelOpacity: isAmenity ? 1 : drawingShown ? 0 : 1,
-        labelColour: isAmenity || (coloured && colorMode === 'status') ? '#ffffff' : '#3b3a2a',
+        labelOpacity: (isAmenity ? 1 : drawingShown ? 0 : 1) * dim,
+        labelColour: isAmenity || colorMode === 'status' ? '#ffffff' : '#3b3a2a',
         labelHalo: isAmenity ? 1.2 : 0,
         labelSize: isAmenity ? 10 : 11,
       },
       geometry: { type: 'Polygon', coordinates: [plot.polygon] },
     }
+  })
+
+  // Block outlines: the chosen one is highlighted, the others darkened
+  blocks.forEach((block) => {
+    features.unshift({
+      type: 'Feature',
+      properties: {
+        kind: 'block',
+        name: block.name,
+        dim: Boolean(selectedBlock) && block.name !== selectedBlock,
+        selected: block.name === selectedBlock,
+      },
+      geometry: { type: 'Polygon', coordinates: [block.polygon] },
+    })
   })
 
   if (boundary) {

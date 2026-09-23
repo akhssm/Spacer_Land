@@ -47,25 +47,6 @@ export const STATEMENT = {
   accentLine: 'Just One Live Link',
 }
 
-// TODO: these are samples. Replace them with real projects, and point "href"
-// at each project's own viewer link (/p/<shortCode>).
-export const DEMOS = [
-  {
-    name: 'Ira Towers',
-    city: 'Nizampet, Hyderabad',
-    text: 'Apartment towers on the live satellite map, with search, GPS and directions.',
-    glow: '#3f66c9',
-    href: '/p/ira-towers',
-  },
-  {
-    name: 'Green Meadows',
-    city: 'Hyderabad',
-    text: 'Sample plotted layout with 24 plots, zones, status colours and a brochure.',
-    glow: '#b9822e',
-    href: '/p/demo',
-  },
-]
-
 export const FEATURES = [
   { icon: Satellite, title: 'Satellite View' },
   { icon: LocateFixed, title: 'Live GPS' },
