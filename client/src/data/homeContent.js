@@ -51,31 +51,17 @@ export const STATEMENT = {
 // at each project's own viewer link (/p/<shortCode>).
 export const DEMOS = [
   {
+    name: 'Ira Towers',
+    city: 'Nizampet, Hyderabad',
+    text: 'Apartment towers on the live satellite map, with search, GPS and directions.',
+    glow: '#3f66c9',
+    href: '/p/ira-towers',
+  },
+  {
     name: 'Green Meadows',
     city: 'Hyderabad',
-    text: 'Sample residential layout, fully interactive in 3D.',
+    text: 'Sample plotted layout with 24 plots, zones, status colours and a brochure.',
     glow: '#b9822e',
-    href: '/p/demo',
-  },
-  {
-    name: 'Demo Project',
-    city: 'Hyderabad',
-    text: 'Sample project that shows every feature in one place.',
-    glow: '#1f8f8f',
-    href: '/p/demo',
-  },
-  {
-    name: 'Orbit Industrial Park',
-    city: 'Sangareddy',
-    text: 'Sample industrial plots with live inventory updates.',
-    glow: '#3f66c9',
-    href: '/p/demo',
-  },
-  {
-    name: 'Hillcrest Farms',
-    city: 'Vikarabad',
-    text: 'Sample farm plots placed on the satellite map.',
-    glow: '#5f9e3a',
     href: '/p/demo',
   },
 ]

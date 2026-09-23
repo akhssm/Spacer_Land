@@ -1,0 +1,234 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { AttributionControlMLGL, LngLatBounds, Map as MapTilerMap, MapStyle, Marker, config } from '@maptiler/sdk'
+import '@maptiler/sdk/dist/maptiler-sdk.css'
+import { Box, Home, Share2 } from 'lucide-react'
+import { centroid } from '../../lib/geo'
+import { buildLayoutGeoJson } from '../../lib/layoutGeoJson'
+import Compass from './Compass'
+
+const KEY = import.meta.env.VITE_MAPTILER_KEY
+
+const SOURCE = 'layout'
+const IS_PLOT = ['==', ['get', 'kind'], 'plot']
+const IS_BOUNDARY = ['==', ['get', 'kind'], 'boundary']
+
+// How the layout is drawn. Each layer reads colours and labels from the GeoJSON properties.
+const LAYERS = [
+  { id: 'boundary-fill', type: 'fill', filter: IS_BOUNDARY, paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.06 } },
+  { id: 'boundary-line', type: 'line', filter: IS_BOUNDARY, paint: { 'line-color': '#ffffff', 'line-opacity': 0.6, 'line-width': 1.5 } },
+  { id: 'plots-fill', type: 'fill', filter: IS_PLOT, paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': 0.95 } },
+  {
+    id: 'plots-3d',
+    type: 'fill-extrusion',
+    filter: IS_PLOT,
+    layout: { visibility: 'none' },
+    paint: { 'fill-extrusion-color': ['get', 'fill'], 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-opacity': 0.9 },
+  },
+  {
+    id: 'plots-line',
+    type: 'line',
+    filter: IS_PLOT,
+    paint: {
+      'line-color': ['case', ['get', 'selected'], '#75c217', '#ffffff'],
+      'line-width': ['case', ['get', 'selected'], 3, 1],
+    },
+  },
+  {
+    id: 'plots-label',
+    type: 'symbol',
+    filter: IS_PLOT,
+    layout: { 'text-field': ['get', 'number'], 'text-size': 11, 'text-font': ['Open Sans Bold'], 'text-allow-overlap': true },
+    paint: { 'text-color': ['get', 'labelColour'] },
+  },
+]
+const CLICKABLE_LAYERS = ['plots-fill', 'plots-3d']
+
+const ROUND_BUTTON =
+  'inline-flex size-12 cursor-pointer items-center justify-center rounded-full bg-[#1c1c1c]/90 text-white backdrop-blur transition-colors hover:bg-[#2a2a2a]'
+
+// Shown until a MapTiler key is added to client/.env
+function MissingKey() {
+  return (
+    <div className="absolute inset-0 flex items-center justify-center px-5">
+      <div className="max-w-md rounded-lg border border-line bg-card p-6 text-sm leading-6 text-muted">
+        <p className="mb-2 font-bold text-white">MapTiler key missing</p>
+        <p>
+          Add your key to <code className="text-white">client/.env</code> as{' '}
+          <code className="text-white">VITE_MAPTILER_KEY</code>, then restart{' '}
+          <code className="text-white">npm run dev</code>.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// The live satellite map with the project's layout drawn on it.
+function MapView({ project, colorMode, selectedPlot, onSelectPlot, userPosition, onShare }) {
+  const containerRef = useRef(null)
+  const mapRef = useRef(null)
+  const userMarkerRef = useRef(null)
+  const pannedToUser = useRef(false)
+  const selectRef = useRef(onSelectPlot) // latest handler, so the map's click listener is bound once
+
+  const [ready, setReady] = useState(false) // true once the map style and layers are loaded
+  const [heading, setHeading] = useState(0)
+  const [is3D, setIs3D] = useState(false)
+
+  useEffect(() => {
+    selectRef.current = onSelectPlot
+  }, [onSelectPlot])
+
+  // Zoom so the whole layout is in view
+  const fitProject = useCallback(
+    (map) => {
+      const bounds = new LngLatBounds()
+      const rings = [project.layout.boundary, ...project.layout.plots.map((plot) => plot.polygon)]
+      rings.filter(Boolean).forEach((ring) => ring.forEach((point) => bounds.extend(point)))
+      if (bounds.isEmpty()) bounds.extend(project.location)
+      map.fitBounds(bounds, { padding: 80, duration: 600 })
+    },
+    [project],
+  )
+
+  // 1. Create the map once, and remove it when the page closes
+  useEffect(() => {
+    if (!KEY) return
+
+    config.apiKey = KEY
+    config.telemetry = false
+
+    const map = new MapTilerMap({
+      container: containerRef.current,
+      style: MapStyle.HYBRID,
+      center: project.location,
+      zoom: 17,
+      maxPitch: 75,
+      navigationControl: false,
+      geolocateControl: false,
+      forceNoAttributionControl: true,
+    })
+    map.addControl(new AttributionControlMLGL({ compact: true }), 'bottom-left')
+
+    map.on('load', () => {
+      map.addSource(SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+      LAYERS.forEach((layer) => map.addLayer({ ...layer, source: SOURCE }))
+
+      // A click on a plot selects it; a click anywhere else clears the selection
+      map.on('click', (event) => {
+        const hits = map.queryRenderedFeatures(event.point, { layers: CLICKABLE_LAYERS })
+        const plot = hits.length && project.layout.plots.find((p) => p.number === hits[0].properties.number)
+        selectRef.current(plot || null)
+      })
+      map.on('mousemove', (event) => {
+        const hits = map.queryRenderedFeatures(event.point, { layers: CLICKABLE_LAYERS })
+        map.getCanvas().style.cursor = hits.length ? 'pointer' : ''
+      })
+
+      fitProject(map)
+      setReady(true)
+    })
+    map.on('rotate', () => setHeading(map.getBearing()))
+
+    mapRef.current = map
+    return () => {
+      map.remove()
+      mapRef.current = null
+      setReady(false)
+    }
+  }, [project, fitProject])
+
+  // 2. Push the layout to the map whenever colours or the selection change
+  useEffect(() => {
+    if (!ready) return
+    mapRef.current.getSource(SOURCE).setData(buildLayoutGeoJson(project, colorMode, selectedPlot))
+  }, [ready, project, colorMode, selectedPlot])
+
+  // 3. Move to a plot when it is chosen from search or by a click
+  useEffect(() => {
+    if (ready && selectedPlot) mapRef.current.easeTo({ center: centroid(selectedPlot.polygon) })
+  }, [ready, selectedPlot])
+
+  // 4. Show where the visitor is, and go there the first time GPS reports it
+  useEffect(() => {
+    if (!ready) return
+    const map = mapRef.current
+
+    if (!userPosition) {
+      userMarkerRef.current?.remove()
+      userMarkerRef.current = null
+      pannedToUser.current = false
+      return
+    }
+
+    if (!userMarkerRef.current) {
+      const dot = document.createElement('span')
+      dot.className = 'block size-4 rounded-full border-2 border-white bg-reserved shadow-[0_0_0_6px_rgba(63,131,209,0.35)]'
+      dot.title = 'You are here'
+      userMarkerRef.current = new Marker({ element: dot }).setLngLat(userPosition).addTo(map)
+    } else {
+      userMarkerRef.current.setLngLat(userPosition)
+    }
+
+    if (!pannedToUser.current) {
+      map.easeTo({ center: userPosition })
+      pannedToUser.current = true
+    }
+  }, [ready, userPosition])
+
+  // Flat shapes in 2D, raised blocks in 3D
+  const set3D = (on) => {
+    const map = mapRef.current
+    map.setLayoutProperty('plots-3d', 'visibility', on ? 'visible' : 'none')
+    map.setLayoutProperty('plots-fill', 'visibility', on ? 'none' : 'visible')
+    setIs3D(on)
+  }
+
+  const toggle3D = () => {
+    if (!ready) return
+    const on = !is3D
+    set3D(on)
+    mapRef.current.easeTo({ pitch: on ? 60 : 0, duration: 800 })
+  }
+
+  const goHome = () => {
+    if (!ready) return
+    set3D(false)
+    mapRef.current.easeTo({ pitch: 0, bearing: 0, duration: 600 })
+    fitProject(mapRef.current)
+  }
+
+  if (!KEY) return <MissingKey />
+
+  return (
+    <>
+      {/* MapTiler's CSS makes the map element position: relative, so the wrapper does the sizing */}
+      <div className="absolute inset-0">
+        <div ref={containerRef} className="size-full" />
+      </div>
+
+      <div className="absolute top-24 left-5">
+        <Compass heading={heading} onReset={() => mapRef.current?.easeTo({ bearing: 0 })} />
+      </div>
+
+      <div className="absolute right-5 bottom-40 flex flex-col gap-2 md:bottom-48">
+        <button
+          type="button"
+          onClick={toggle3D}
+          aria-pressed={is3D}
+          title={is3D ? 'Back to 2D' : 'View in 3D'}
+          className={`${ROUND_BUTTON} ${is3D ? 'text-brand' : ''}`}
+        >
+          <Box size={18} />
+        </button>
+        <button type="button" onClick={goHome} title="Show the whole layout" className={ROUND_BUTTON}>
+          <Home size={18} />
+        </button>
+        <button type="button" onClick={onShare} title="Share this link" className={ROUND_BUTTON}>
+          <Share2 size={18} />
+        </button>
+      </div>
+    </>
+  )
+}
+
+export default MapView
