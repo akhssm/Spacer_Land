@@ -98,6 +98,7 @@ function MapView({
 }) {
   const containerRef = useRef(null)
   const mapRef = useRef(null)
+  const buildingsRef = useRef(null) // the three.js layer, when the project has buildings
   const userMarkerRef = useRef(null)
   const pannedToUser = useRef(false)
   // Latest handlers, so the map's click listener is bound once
@@ -155,6 +156,16 @@ function MapView({
       map.addSource(SOURCE, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       LAYERS.forEach((layer) => map.addLayer({ ...layer, source: SOURCE }))
 
+      // Real buildings for the 3D view, when the project has block footprints or a model.
+      // three.js is large, so it is only downloaded for projects that need it.
+      if (project.layout.blocks?.length || project.model?.url) {
+        import('../../lib/buildings3d').then(({ createBuildingsLayer }) => {
+          if (mapRef.current !== map) return // the page closed while loading
+          buildingsRef.current = createBuildingsLayer(project)
+          map.addLayer(buildingsRef.current)
+        })
+      }
+
       // A click on a plot selects it, a click on a block chooses that block,
       // and a click anywhere else clears the plot selection
       map.on('click', (event) => {
@@ -184,6 +195,7 @@ function MapView({
     return () => {
       map.remove()
       mapRef.current = null
+      buildingsRef.current = null
       setReady(false)
     }
   }, [project, fitProject])
@@ -244,11 +256,19 @@ function MapView({
     }
   }, [ready, userPosition])
 
-  // Flat shapes in 2D, raised blocks in 3D
+  // Flat shapes in 2D. In 3D, projects with buildings show them; others raise their plots.
   const set3D = (on) => {
     const map = mapRef.current
-    map.setLayoutProperty('plots-3d', 'visibility', on ? 'visible' : 'none')
+    const buildings = buildingsRef.current
+    buildings?.setVisible(on)
+    map.setLayoutProperty('plots-3d', 'visibility', on && !buildings ? 'visible' : 'none')
     map.setLayoutProperty('plots-fill', 'visibility', on ? 'none' : 'visible')
+    // Flat numbers would float on top of the buildings, so they rest until 2D returns
+    map.setPaintProperty(
+      'plots-label',
+      'text-opacity',
+      on && buildings ? ['case', ['==', ['get', 'kind'], 'plot'], 0, ['get', 'labelOpacity']] : ['get', 'labelOpacity'],
+    )
     setIs3D(on)
   }
 
@@ -256,7 +276,13 @@ function MapView({
     if (!ready) return
     const on = !is3D
     set3D(on)
-    mapRef.current.easeTo({ pitch: on ? 60 : 0, duration: 800 })
+    const map = mapRef.current
+    map.easeTo({
+      pitch: on ? 62 : 0,
+      bearing: on && buildingsRef.current ? -35 : map.getBearing(),
+      zoom: on ? Math.max(map.getZoom(), 17.6) : map.getZoom(),
+      duration: 900,
+    })
   }
 
   const goHome = () => {
@@ -288,7 +314,7 @@ function MapView({
           type="button"
           onClick={toggle3D}
           aria-pressed={is3D}
-          title={is3D ? 'Back to 2D' : 'View in 3D'}
+          title={is3D ? 'Back to 2D' : 'View in 3D (drag with the right mouse button or two fingers to rotate)'}
           className={`${ROUND_BUTTON} ${is3D ? 'text-brand' : ''}`}
         >
           <Box size={18} />

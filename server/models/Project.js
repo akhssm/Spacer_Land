@@ -46,7 +46,15 @@ const projectSchema = new Schema(
         coordinates: { type: [[Number]], default: undefined },
       },
       boundary: ring,
-      blocks: [{ _id: false, name: String, polygon: ring }],
+      // A block is one building: its footprint and how many floors sit on the stilt level
+      blocks: [{ _id: false, name: String, polygon: ring, floors: Number }],
+    },
+    // Optional architect's 3D model (glTF/GLB) to show instead of the generated buildings
+    model: {
+      url: String,
+      position: { type: [Number], default: undefined }, // [longitude, latitude] of the model's origin
+      rotation: { type: Number, default: 0 }, // degrees clockwise from north
+      scale: { type: Number, default: 1 },
     },
   },
   { timestamps: true },
