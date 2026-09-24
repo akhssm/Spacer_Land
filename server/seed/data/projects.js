@@ -71,6 +71,18 @@ export const PROJECTS = [
       // 24 pages rendered from the PDF with scripts/brochure-pages.py
       pages: Array.from({ length: 24 }, (_, index) => `/projects/ira-towers/brochure/page-${index + 1}.webp`),
     },
+    // Renders cropped from the brochure. A YouTube video would be { kind: 'youtube', url: '<video id>' }.
+    gallery: [
+      ['01-elevation-clubhouse', 'Elevation with the club house'],
+      ['02-tower-elevation', 'Tower elevation'],
+      ['03-aerial-pool', 'Aerial view with the swimming pool'],
+      ['04-aerial-blocks', 'Aerial view of the three blocks'],
+      ['05-night-view', 'Night view'],
+      ['06-evening-view', 'Evening view from the road'],
+      ['07-club-house', 'Club house'],
+      ['08-play-area', "Children's play area"],
+      ['09-landscaped-walkway', 'Landscaped walkway'],
+    ].map(([file, caption]) => ({ kind: 'image', url: `/projects/ira-towers/gallery/${file}.webp`, caption })),
     layout: {
       // Traced from the brochure's master plan and fitted to the satellite image
       sample: false,

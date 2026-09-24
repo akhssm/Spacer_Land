@@ -29,6 +29,15 @@ const projectSchema = new Schema(
     brochure: {
       pages: { type: [String], default: [] }, // one image URL per page
     },
+    // Pictures and videos shown by the Gallery button
+    gallery: [
+      {
+        _id: false,
+        kind: { type: String, enum: ['image', 'youtube'], default: 'image' },
+        url: { type: String, required: true }, // image URL, or the YouTube video id
+        caption: { type: String, default: '' },
+      },
+    ],
     layout: {
       sample: { type: Boolean, default: false },
       // The plan drawing draped over the map: image URL plus its four corners

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { BookOpen, Image, Info, LocateFixed, MessageCircle, Navigation, Search } from 'lucide-react'
 import BrochureViewer from '../components/viewer/BrochureViewer'
+import GalleryViewer from '../components/viewer/GalleryViewer'
 import MapView from '../components/viewer/MapView'
 import { BlockChips, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
 import { fetchProject } from '../api/projects'
@@ -170,6 +171,7 @@ function ProjectViewer({ shortCode }) {
   }
 
   const hasBrochure = project.brochure.pages.length > 0
+  const gallery = project.gallery ?? []
   // The flat panel sits on the right on desktop, so other controls move out from under it
   const sidePanelOpen = Boolean(selectedPlot?.plan) && !openPanel
   // WhatsApp link with a ready-made message, or the site's contact link if the project has no number
@@ -179,7 +181,7 @@ function ProjectViewer({ shortCode }) {
 
   // Tools without an onClick or href are not built yet and show as disabled
   const tools = [
-    { icon: Image, label: 'Gallery' },
+    { icon: Image, label: 'Gallery', onClick: gallery.length ? () => setOpenPanel('gallery') : null },
     { icon: Search, label: 'Search', onClick: () => setOpenPanel('search') },
     { icon: LocateFixed, label: 'GPS', onClick: toggleGps, active: gpsOn },
     { icon: BookOpen, label: 'Brochure', onClick: hasBrochure ? () => setOpenPanel('brochure') : null },
@@ -274,6 +276,9 @@ function ProjectViewer({ shortCode }) {
       )}
       {openPanel === 'search' && <SearchPanel project={project} onSelect={selectPlot} onClose={() => setOpenPanel(null)} />}
       {openPanel === 'info' && <InfoPanel project={project} onClose={() => setOpenPanel(null)} />}
+      {openPanel === 'gallery' && (
+        <GalleryViewer items={gallery} title={project.name} onClose={() => setOpenPanel(null)} />
+      )}
       {openPanel === 'brochure' && (
         <BrochureViewer pages={project.brochure.pages} title={project.name} onClose={() => setOpenPanel(null)} />
       )}
