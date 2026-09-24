@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 
 const ICON_BUTTON =
@@ -30,8 +31,8 @@ function Slide({ item }) {
 }
 
 // Full-screen gallery: a grid of thumbnails, and a large view with arrows when one is chosen.
-function GalleryViewer({ items, title, onClose }) {
-  const [current, setCurrent] = useState(null) // index of the item shown large, or null for the grid
+function GalleryViewer({ items, title, onClose, initialIndex = null }) {
+  const [current, setCurrent] = useState(initialIndex) // index of the item shown large, or null for the grid
 
   const showPrev = () => setCurrent((index) => Math.max(index - 1, 0))
   const showNext = () => setCurrent((index) => Math.min(index + 1, items.length - 1))
@@ -62,7 +63,9 @@ function GalleryViewer({ items, title, onClose }) {
 
   const item = current === null ? null : items[current]
 
-  return (
+  // Rendered at the document root, so it covers the whole screen even when
+  // opened from inside a panel (a panel's backdrop-filter would otherwise trap it).
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -147,7 +150,8 @@ function GalleryViewer({ items, title, onClose }) {
           </ul>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }
 

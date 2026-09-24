@@ -116,7 +116,19 @@ export async function deleteProject(req, res) {
 }
 
 // PATCH /api/projects/:shortCode/plots/:number: change one plot, typically its status
-const EDITABLE_PLOT_FIELDS = ['status', 'zone', 'areaSqFt', 'height', 'bhk', 'facing', 'rooms', 'plan']
+const EDITABLE_PLOT_FIELDS = [
+  'status',
+  'zone',
+  'areaSqFt',
+  'height',
+  'bhk',
+  'facing',
+  'rooms',
+  'plan',
+  'description',
+  'features',
+  'images',
+]
 
 export async function updatePlot(req, res) {
   const project = await Project.findOne({ shortCode: req.params.shortCode })

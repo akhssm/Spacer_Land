@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Compass, ExternalLink, MessageCircle, Search, X } from 'lucide-react'
 import { SQ_FT_PER_SQ_M, areaSqMetres, directionsUrl, formatArea } from '../../lib/geo'
+import GalleryViewer from './GalleryViewer'
 
 const CHIP =
   'inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors'
@@ -107,6 +108,87 @@ export function FlatPanel({ project, plot, showStatus, enquiryLink, onClose }) {
       >
         <MessageCircle size={16} /> Enquire about this flat
       </a>
+    </aside>
+  )
+}
+
+// An amenity such as the club house or the play area: what it is, its pictures and its facilities
+export function AmenityPanel({ project, plot, onClose }) {
+  const [openImage, setOpenImage] = useState(null) // index of the picture shown large
+  const images = plot.images ?? []
+  const features = plot.features ?? []
+  // The plan states the club house's area; other amenities are measured from the traced shape
+  const measured = !plot.areaSqFt
+  const area = formatArea(plot.areaSqFt ? plot.areaSqFt / SQ_FT_PER_SQ_M : areaSqMetres(plot.polygon))
+
+  return (
+    <aside
+      aria-label={plot.number}
+      className="absolute inset-x-3 bottom-3 z-20 max-h-[75svh] overflow-y-auto rounded-xl border border-line bg-panel/95 p-5 text-sm backdrop-blur md:inset-x-auto md:top-20 md:right-5 md:bottom-5 md:max-h-none md:w-96"
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold">{plot.number}</h2>
+          <p className="text-xs text-muted">
+            {plot.zone} · {project.name}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={`Close ${plot.number}`}
+          className="cursor-pointer rounded-full p-1 text-muted hover:text-white"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold">
+        {measured ? '≈ ' : ''}
+        {area.sqft}
+        <span className="font-normal text-muted">
+          {area.sqm}
+          {measured ? ' · from the plan' : ''}
+        </span>
+      </p>
+
+      {plot.description && <p className="leading-6 text-white/85">{plot.description}</p>}
+
+      {images.length > 0 && (
+        <ul className={`mt-4 grid gap-2 ${images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          {images.map((image, index) => (
+            <li key={image.url}>
+              <button
+                type="button"
+                onClick={() => setOpenImage(index)}
+                aria-label={`View ${image.caption || 'picture'} full size`}
+                className="block aspect-4/3 w-full cursor-pointer overflow-hidden rounded-lg bg-white/5"
+              >
+                <img src={image.url} alt={image.caption} loading="lazy" className="size-full object-cover" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {features.length > 0 && (
+        <>
+          <h3 className="mt-5 mb-2 text-xs font-bold tracking-[0.15em] text-muted uppercase">
+            {plot.number === 'Club House' ? 'Facilities' : 'Features'}
+          </h3>
+          <ul className="flex flex-wrap gap-1.5">
+            {features.map((feature) => (
+              <li key={feature} className="rounded-full border border-line px-3 py-1 text-xs text-white/85">
+                {feature}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {openImage !== null && (
+        <GalleryViewer items={images} title={plot.number} initialIndex={openImage} onClose={() => setOpenImage(null)} />
+      )}
     </aside>
   )
 }

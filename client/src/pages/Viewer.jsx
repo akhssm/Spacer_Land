@@ -4,7 +4,7 @@ import { BookOpen, Image, Info, LocateFixed, MessageCircle, Navigation, Search }
 import BrochureViewer from '../components/viewer/BrochureViewer'
 import GalleryViewer from '../components/viewer/GalleryViewer'
 import MapView from '../components/viewer/MapView'
-import { BlockChips, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
+import { AmenityPanel, BlockChips, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
 import { fetchProject } from '../api/projects'
 import { SITE, getContactLink } from '../data/homeContent'
 import { directionsUrl } from '../lib/geo'
@@ -172,8 +172,8 @@ function ProjectViewer({ shortCode }) {
 
   const hasBrochure = project.brochure.pages.length > 0
   const gallery = project.gallery ?? []
-  // The flat panel sits on the right on desktop, so other controls move out from under it
-  const sidePanelOpen = Boolean(selectedPlot?.plan) && !openPanel
+  // Flats and amenities open a panel on the right on desktop, so other controls move out from under it
+  const sidePanelOpen = Boolean(selectedPlot?.plan || selectedPlot?.kind === 'amenity') && !openPanel
   // WhatsApp link with a ready-made message, or the site's contact link if the project has no number
   const enquiryLink = (message) =>
     project.whatsapp ? `https://wa.me/${project.whatsapp}?text=${encodeURIComponent(message)}` : getContactLink()
@@ -270,6 +270,8 @@ function ProjectViewer({ shortCode }) {
             enquiryLink={enquiryLink}
             onClose={() => setSelectedPlot(null)}
           />
+        ) : selectedPlot.kind === 'amenity' ? (
+          <AmenityPanel project={project} plot={selectedPlot} onClose={() => setSelectedPlot(null)} />
         ) : (
           <PlotCard project={project} plot={selectedPlot} showStatus={colorMode === 'status'} onClose={() => setSelectedPlot(null)} />
         )

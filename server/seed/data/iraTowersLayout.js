@@ -12,13 +12,14 @@ export const IRA_TOWERS_BOUNDARY = [[78.379725, 17.512319], [78.380476, 17.51233
 
 // Named areas from the plan. They can be searched and clicked but are not for sale.
 export const IRA_TOWERS_AMENITIES = [
+  { number: "Club House", kind: "amenity", zone: "Amenities", areaSqFt: 18648, height: 12, status: 'available', polygon: [[78.3801, 17.511188], [78.380216, 17.511195], [78.380214, 17.510992], [78.380098, 17.510985], [78.3801, 17.511188]] },
   { number: "Children's Play Area", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.380468, 17.512097], [78.380465, 17.512079], [78.380456, 17.512064], [78.380443, 17.512053], [78.380428, 17.512049], [78.380413, 17.512051], [78.3804, 17.512061], [78.380392, 17.512075], [78.380389, 17.512092], [78.380392, 17.51211], [78.380401, 17.512125], [78.380414, 17.512136], [78.380429, 17.51214], [78.380444, 17.512138], [78.380457, 17.512129], [78.380465, 17.512114], [78.380468, 17.512097]] },
   { number: "Outdoor Games", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.379996, 17.512411], [78.380406, 17.512437], [78.380406, 17.512359], [78.379995, 17.512334], [78.379996, 17.512411]] },
   { number: "Sitting Area", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.380285, 17.51121], [78.38034, 17.511214], [78.380337, 17.510992], [78.380283, 17.510988], [78.380285, 17.51121]] },
   { number: "Swimming Pool", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.380102, 17.511067], [78.380184, 17.511072], [78.380183, 17.511003], [78.380101, 17.510998], [78.380102, 17.511067]] },
   { number: "Lawn", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.38009, 17.51183], [78.380349, 17.511846], [78.380348, 17.511734], [78.380088, 17.511719], [78.38009, 17.51183]] },
   { number: "Landscaped Lawn", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.380398, 17.512351], [78.38047, 17.512356], [78.380468, 17.512147], [78.380396, 17.512142], [78.380398, 17.512351]] },
-  { number: "Entrance", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.38016, 17.510974], [78.380258, 17.51098], [78.380258, 17.510933], [78.38016, 17.510927], [78.38016, 17.510974]] },
+  { number: "Grand Entrance", kind: 'amenity', zone: 'Amenities', status: 'available', polygon: [[78.38016, 17.510974], [78.380258, 17.51098], [78.380258, 17.510933], [78.38016, 17.510927], [78.38016, 17.510974]] },
 ]
 
 export const IRA_TOWERS_PLOTS = [
@@ -58,7 +59,6 @@ export const IRA_TOWERS_PLOTS = [
   { number: "C-12", zone: "Block C", areaSqFt: 1840, status: 'available', polygon: [[78.380233, 17.511723], [78.380346, 17.511729], [78.380345, 17.511641], [78.380232, 17.511634], [78.380233, 17.511723]] },
   { number: "C-12A", zone: "Block C", areaSqFt: 1840, status: 'available', polygon: [[78.380232, 17.511604], [78.380345, 17.511611], [78.380344, 17.511522], [78.380231, 17.511515], [78.380232, 17.511604]] },
   { number: "C-14", zone: "Block C", areaSqFt: 1590, status: 'available', polygon: [[78.380229, 17.511468], [78.38033, 17.511474], [78.380329, 17.511388], [78.380228, 17.511382], [78.380229, 17.511468]] },
-  { number: "Club House", kind: "amenity", zone: "Amenities", areaSqFt: 18648, height: 12, status: 'available', polygon: [[78.3801, 17.511188], [78.380216, 17.511195], [78.380214, 17.510992], [78.380098, 17.510985], [78.3801, 17.511188]] },
 ]
 
 // Outlines of the three blocks, for highlighting one and dimming the others.

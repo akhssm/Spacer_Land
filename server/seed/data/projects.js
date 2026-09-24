@@ -1,6 +1,7 @@
 // Seed data: the projects loaded into MongoDB by `npm run seed`.
 // Every coordinate is in GeoJSON order: [longitude, latitude].
 
+import { IRA_TOWERS_AMENITY_DETAILS } from './iraTowersAmenities.js'
 import { getIraFlatDetails } from './iraTowersFlats.js'
 import {
   IRA_TOWERS_AMENITIES,
@@ -82,6 +83,7 @@ export const PROJECTS = [
       ['07-club-house', 'Club house'],
       ['08-play-area', "Children's play area"],
       ['09-landscaped-walkway', 'Landscaped walkway'],
+      ['10-entrance-drive', 'Entrance drive'],
     ].map(([file, caption]) => ({ kind: 'image', url: `/projects/ira-towers/gallery/${file}.webp`, caption })),
     layout: {
       // Traced from the brochure's master plan and fitted to the satellite image
@@ -92,7 +94,7 @@ export const PROJECTS = [
       // Each flat's shape from the master plan, plus its type, facing, rooms and plan image
       plots: [
         ...IRA_TOWERS_PLOTS.map((plot) => ({ ...plot, ...getIraFlatDetails(plot.number) })),
-        ...IRA_TOWERS_AMENITIES,
+        ...IRA_TOWERS_AMENITIES.map((amenity) => ({ ...amenity, ...IRA_TOWERS_AMENITY_DETAILS[amenity.number] })),
       ],
     },
   },

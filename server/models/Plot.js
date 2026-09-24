@@ -18,6 +18,10 @@ const plotSchema = new Schema(
     facing: String, // "East"
     rooms: [{ _id: false, name: String, size: String }],
     plan: String, // floor-plan image URL
+    // Mostly for amenities: what it is, what it offers, and pictures of it
+    description: String,
+    features: { type: [String], default: undefined },
+    images: [{ _id: false, url: String, caption: String }],
     // GeoJSON Polygon: an array of rings, each a closed list of [longitude, latitude]
     geometry: {
       type: { type: String, enum: ['Polygon'], default: 'Polygon' },
