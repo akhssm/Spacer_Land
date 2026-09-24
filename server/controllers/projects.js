@@ -24,6 +24,7 @@ function projectToClient(project, plots) {
       overlay: layout.overlay?.url ? layout.overlay : undefined,
       boundary: layout.boundary,
       blocks: layout.blocks,
+      cores: layout.cores,
       plots: plots.map(plotToClient),
     },
   }

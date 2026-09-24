@@ -1,13 +1,12 @@
 // A MapLibre custom layer that draws the project's buildings with three.js.
-// Each block is built from its flats as drawn on the master plan: the flats
-// on both sides of the central corridor form the building's outline (with the
-// gaps between flats), balconies protrude on every flat's outer face on every
-// floor, and planters line the roof. The club house gets its louvred façade
-// and the pool on its roof. If the project has an architect's glTF model,
-// that is shown instead.
+// Each block is built from its flats as drawn on the master plan: every flat
+// is its own tower with a gap to the next, the two columns of towers meet at
+// the central corridor, lift and stair cores rise above the roof, balconies
+// protrude on every tower's outer face on every floor, and planters line the
+// roof. The club house gets its louvred façade and the pool on its roof. If
+// the project has an architect's glTF model, that is shown instead.
 
 import { MercatorCoordinate } from '@maptiler/sdk'
-import polygonClipping from 'polygon-clipping'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -17,9 +16,11 @@ const STILT_HEIGHT = 3.5 // ground level parking under the block
 const DEFAULT_FLOORS = 10
 const BALCONY_DEPTH = 1.4
 const RAIL_HEIGHT = 1.1
+const CORE_EXTRA_HEIGHT = 3 // lift machine rooms rise above the roof
+const CORRIDOR_MIN_WIDTH = 2.4
 const PX_PER_METRE = 24 // resolution of the generated façade textures
 const MODULE_METRES = 12 // the façade texture repeats every 12 m along a wall
-const SHORT_WALL = 3.5 // walls shorter than this (the sides of notches) get no windows
+const SHORT_WALL = 3.5 // walls shorter than this get no windows
 
 // ---------- Façade textures, drawn on a canvas ----------
 
@@ -100,10 +101,6 @@ const edgesOf = (ring) => ring.slice(0, -1).map((a, i) => [a, ring[i + 1]])
 const edgeLength = ([[ax, az], [bx, bz]]) => Math.hypot(bx - ax, bz - az)
 const edgeAngle = ([[ax, az], [bx, bz]]) => Math.atan2(-(bz - az), bx - ax)
 const midpoint = ([[ax, az], [bx, bz]]) => [(ax + bx) / 2, (az + bz) / 2]
-const centroid = (points) => {
-  const pts = points.slice(0, -1)
-  return [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.reduce((s, p) => s + p[1], 0) / pts.length]
-}
 
 // Walls around a ring between two heights; long walls get the façade, short ones a plain colour
 function addWalls(group, ring, bottom, height, texture, plainColor) {
@@ -136,7 +133,7 @@ function addSurface(group, ring, height, color) {
   group.add(mesh)
 }
 
-// A box placed along an edge, pushed outward (or inward when depth is negative)
+// A box placed along an edge, pushed outward (or inward when the offset is negative)
 function boxAlongEdge(edge, outward, { width, height, depth, offset, y }) {
   const geometry = new THREE.BoxGeometry(width, height, depth)
   const [mx, mz] = midpoint(edge)
@@ -146,175 +143,113 @@ function boxAlongEdge(edge, outward, { width, height, depth, offset, y }) {
   return geometry.applyMatrix4(matrix)
 }
 
-// ---------- Buildings ----------
+// ---------- Blocks ----------
 
-// The plan draws each flat as a box with a small gap to its neighbour. On the
-// real floor plans the flats of a wing sit shoulder to shoulder, so each box is
-// widened by this much before joining, which closes the gaps.
-const FLAT_GROW = 1.1
-
-// Pushes every edge of a convex ring outward by `distance`
-function offsetRing(ring, distance) {
-  const points = ring.slice(0, -1)
-  const n = points.length
-  // Ring orientation decides which side is "outside"
-  const area = points.reduce((sum, [x, z], i) => sum + (x * points[(i + 1) % n][1] - points[(i + 1) % n][0] * z), 0)
-  const sign = area > 0 ? 1 : -1
-
-  const lines = points.map((a, i) => {
-    const b = points[(i + 1) % n]
-    const dx = b[0] - a[0]
-    const dz = b[1] - a[1]
-    const length = Math.hypot(dx, dz)
-    const nx = (sign * dz) / length
-    const nz = (-sign * dx) / length
-    return { a: [a[0] + nx * distance, a[1] + nz * distance], d: [dx, dz] }
-  })
-
-  const result = lines.map((line, i) => {
-    const prev = lines[(i - 1 + n) % n]
-    // Intersection of the previous offset line and this one
-    const det = prev.d[0] * line.d[1] - prev.d[1] * line.d[0]
-    if (Math.abs(det) < 1e-9) return line.a
-    const t = ((line.a[0] - prev.a[0]) * line.d[1] - (line.a[1] - prev.a[1]) * line.d[0]) / det
-    return [prev.a[0] + prev.d[0] * t, prev.a[1] + prev.d[1] * t]
-  })
-  return [...result, result[0]]
-}
-
-// Drops vertices that barely bend the outline, so a row of flats whose faces
-// differ by a few centimetres becomes one straight wall.
-function simplifyRing(ring, tolerance = 0.4) {
-  let points = ring.slice(0, -1)
-  let changed = true
-  while (changed && points.length > 4) {
-    changed = false
-    for (let i = 0; i < points.length; i++) {
-      const prev = points[(i - 1 + points.length) % points.length]
-      const next = points[(i + 1) % points.length]
-      const [x, z] = points[i]
-      const dx = next[0] - prev[0]
-      const dz = next[1] - prev[1]
-      const length = Math.hypot(dx, dz) || 1
-      const deviation = Math.abs((x - prev[0]) * dz - (z - prev[1]) * dx) / length
-      if (deviation < tolerance) {
-        points.splice(i, 1)
-        changed = true
-        break
-      }
-    }
-  }
-  return [...points, points[0]]
-}
-
-// Unit normal pointing out of the ring at edge i
-function outwardNormal(ring, i) {
-  const points = ring.slice(0, -1)
-  const n = points.length
-  const area = points.reduce((sum, [x, z], k) => sum + (x * points[(k + 1) % n][1] - points[(k + 1) % n][0] * z), 0)
-  const sign = area > 0 ? 1 : -1
-  const [a, b] = [points[i], points[(i + 1) % n]]
-  const dx = b[0] - a[0]
-  const dz = b[1] - a[1]
-  const length = Math.hypot(dx, dz) || 1
-  return [(sign * dz) / length, (-sign * dx) / length]
-}
-
-// A block's outline, as the renders show it: each wing is one clean slab
-// spanning its flats, and the corridor joins the two wings. The work is done
-// in the block's own orientation (its first edge), so slightly turned blocks
-// still get straight walls.
-function blockOutline(flatRings, blockRing) {
+// Work in the block's own orientation (its first edge), so slightly turned
+// blocks still get straight walls.
+function blockFrame(blockRing) {
   const [a, b] = blockRing
   const theta = Math.atan2(b[1] - a[1], b[0] - a[0])
   const cos = Math.cos(theta)
   const sin = Math.sin(theta)
-  const toFrame = ([x, z]) => [x * cos + z * sin, -x * sin + z * cos]
-  const fromFrame = ([u, v]) => [u * cos - v * sin, u * sin + v * cos]
-
-  const grown = flatRings.map((ring) => offsetRing(ring, FLAT_GROW))
-  const framed = grown.map((ring) => ring.map(toFrame))
-  const centreU = framed.flat().reduce((s, p) => s + p[0], 0) / framed.flat().length
-  const wings = [
-    framed.filter((ring) => centroid(ring)[0] < centreU),
-    framed.filter((ring) => centroid(ring)[0] >= centreU),
-  ].filter((rings) => rings.length)
-
-  const bounds = (rings) => {
-    const pts = rings.flat()
-    const us = pts.map((p) => p[0])
-    const vs = pts.map((p) => p[1])
-    return [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)]
+  return {
+    toFrame: ([x, z]) => [x * cos + z * sin, -x * sin + z * cos],
+    fromFrame: ([u, v]) => [u * cos - v * sin, u * sin + v * cos],
   }
-  const rect = ([u0, u1, v0, v1]) => [[u0, v0], [u1, v0], [u1, v1], [u0, v1], [u0, v0]]
-
-  const wingBoxes = wings.map(bounds)
-  const pieces = wingBoxes.map(rect)
-  if (wingBoxes.length === 2) {
-    const [left, right] = wingBoxes
-    pieces.push(rect([left[1] - 0.5, right[0] + 0.5, Math.min(left[2], right[2]), Math.max(left[3], right[3])]))
-  }
-
-  const union = polygonClipping.union(...pieces.map((ring) => [ring]))
-
-  // Each wing's outer face (the side away from the corridor) and its flats' extent along it
-  const wingFaces = wings.map((rings, index) => {
-    const [u0, u1] = wingBoxes[index]
-    const outerU = wings.length === 2 && index === 0 ? u0 : u1
-    const sign = wings.length === 2 && index === 0 ? -1 : 1
-    const flats = rings.map((ring) => {
-      const vs = ring.map((p) => p[1])
-      return [Math.min(...vs) + FLAT_GROW, Math.max(...vs) - FLAT_GROW]
-    })
-    return { outerU, sign, flats }
-  })
-
-  return { outline: union.map((polygon) => simplifyRing(polygon[0]).map(fromFrame)), wingFaces, fromFrame }
 }
 
-function addBlock(group, block, flats, toLocal) {
+const bounds = (points) => {
+  const us = points.map((p) => p[0])
+  const vs = points.map((p) => p[1])
+  return [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)]
+}
+const rect = ([u0, u1, v0, v1]) => [[u0, v0], [u1, v0], [u1, v1], [u0, v1], [u0, v0]]
+
+// Walls of a box given in the block frame. Faces listed in plainSides get no windows.
+function addBoxWalls(group, box, bottom, height, texture, plainColor, fromFrame, plainSides = []) {
+  const [u0, u1, v0, v1] = box
+  const textured = new THREE.MeshLambertMaterial({ map: texture, side: THREE.DoubleSide })
+  const plain = new THREE.MeshLambertMaterial({ color: plainColor, side: THREE.DoubleSide })
+  const faces = [
+    ['west', [[u0, v1], [u0, v0]]],
+    ['east', [[u1, v0], [u1, v1]]],
+    ['north', [[u0, v0], [u1, v0]]],
+    ['south', [[u1, v1], [u0, v1]]],
+  ]
+  faces.forEach(([side, [a, b]]) => {
+    const edge = [fromFrame(a), fromFrame(b)]
+    const length = edgeLength(edge)
+    const wall = new THREE.PlaneGeometry(length, height)
+    const uv = wall.attributes.uv
+    for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * (length / MODULE_METRES))
+    const usePlain = plainSides.includes(side) || length < SHORT_WALL
+    const mesh = new THREE.Mesh(wall, usePlain ? plain : textured)
+    const [mx, mz] = midpoint(edge)
+    mesh.position.set(mx, bottom + height / 2, mz)
+    mesh.rotation.y = edgeAngle(edge)
+    group.add(mesh)
+  })
+}
+
+// One block, as the plan and the aerial render show it: every flat is its own
+// tower with a gap to its neighbour, the two columns of towers meet the corridor
+// between them, and the lift and stair cores rise above the roof.
+function addBlock(group, block, flats, cores, toLocal) {
   const floors = block.floors ?? DEFAULT_FLOORS
-  const { outline, wingFaces, fromFrame } = blockOutline(
-    flats.map((flat) => flat.polygon.map(toLocal)),
-    block.polygon.map(toLocal),
-  )
   const top = STILT_HEIGHT + floors * FLOOR_HEIGHT
+  const { toFrame, fromFrame } = blockFrame(block.polygon.map(toLocal))
   const facade = towerFacade(floors)
   const stilt = stiltFacade()
 
-  const planters = []
-  outline.forEach((ring) => {
-    addWalls(group, ring, 0, STILT_HEIGHT, stilt, '#4c4a45')
-    addWalls(group, ring, STILT_HEIGHT, floors * FLOOR_HEIGHT, facade, '#e6e2da')
-    addSurface(group, ring, top, '#d9d6cf')
-    // Planting along the roof edge of every long face, as in the renders
-    edgesOf(ring).forEach((edge, i) => {
-      const length = edgeLength(edge)
-      if (length < SHORT_WALL) return
-      planters.push(boxAlongEdge(edge, outwardNormal(ring, i), { width: length - 1.2, height: 0.45, depth: 0.7, offset: -0.6, y: top + 0.22 }))
-    })
-  })
+  const boxes = flats.map((flat) => bounds(flat.polygon.map(toLocal).map(toFrame)))
+  const centreU = boxes.reduce((s, b) => s + (b[0] + b[1]) / 2, 0) / boxes.length
+  const west = boxes.filter((b) => (b[0] + b[1]) / 2 < centreU)
+  const east = boxes.filter((b) => (b[0] + b[1]) / 2 >= centreU)
 
-  // A balcony on every flat's outer face on every floor: a slab with a glass railing
+  // The corridor runs between the two columns, the full length of the block
+  const corridorU0 = Math.max(...west.map((b) => b[1]))
+  const corridorU1 = Math.max(Math.min(...east.map((b) => b[0])), corridorU0 + CORRIDOR_MIN_WIDTH)
+  const allV = boxes.flatMap((b) => [b[2], b[3]])
+  const corridor = [corridorU0, corridorU1, Math.min(...allV), Math.max(...allV)]
+  addBoxWalls(group, corridor, 0, top, facade, '#e6e2da', fromFrame, ['west', 'east', 'north', 'south'])
+  addSurface(group, rect(corridor).map(fromFrame), top, '#d9d6cf')
+
+  // Towers: each flat, stretched sideways to meet the corridor so nothing floats
   const slabs = []
   const rails = []
-  wingFaces.forEach(({ outerU, sign, flats: spans }) => {
-    spans.forEach(([v0, v1]) => {
-      const width = (v1 - v0) * 0.8
-      // The balcony's wall edge, in world space, and the direction pointing out of the wing
-      const edge = [fromFrame([outerU, v0]), fromFrame([outerU, v1])]
-      const outward = (() => {
-        const [ax, az] = fromFrame([outerU, 0])
-        const [bx, bz] = fromFrame([outerU + sign, 0])
-        return [bx - ax, bz - az]
-      })()
-      for (let floor = 0; floor < floors; floor++) {
-        const y = STILT_HEIGHT + floor * FLOOR_HEIGHT
-        slabs.push(boxAlongEdge(edge, outward, { width, height: 0.15, depth: BALCONY_DEPTH, offset: BALCONY_DEPTH / 2, y: y + 0.08 }))
-        rails.push(boxAlongEdge(edge, outward, { width, height: RAIL_HEIGHT, depth: 0.06, offset: BALCONY_DEPTH - 0.03, y: y + 0.15 + RAIL_HEIGHT / 2 }))
-      }
-    })
+  const planters = []
+  const towers = [
+    ...west.map((b) => ({ box: [b[0], corridorU0, b[2], b[3]], inner: 'east', sign: -1, outerU: b[0] })),
+    ...east.map((b) => ({ box: [corridorU1, b[1], b[2], b[3]], inner: 'west', sign: 1, outerU: b[1] })),
+  ]
+  towers.forEach(({ box, inner, sign, outerU }) => {
+    addBoxWalls(group, box, 0, STILT_HEIGHT, stilt, '#4c4a45', fromFrame, [inner])
+    addBoxWalls(group, box, STILT_HEIGHT, floors * FLOOR_HEIGHT, facade, '#e6e2da', fromFrame, [inner])
+    addSurface(group, rect(box).map(fromFrame), top, '#d9d6cf')
+
+    // Balcony on the outer face on every floor, and planting along the roof edge
+    const [, , v0, v1] = box
+    const edge = [fromFrame([outerU, v0]), fromFrame([outerU, v1])]
+    const [ax, az] = fromFrame([outerU, 0])
+    const [bx, bz] = fromFrame([outerU + sign, 0])
+    const outward = [bx - ax, bz - az]
+    const width = (v1 - v0) * 0.8
+    for (let floor = 0; floor < floors; floor++) {
+      const y = STILT_HEIGHT + floor * FLOOR_HEIGHT
+      slabs.push(boxAlongEdge(edge, outward, { width, height: 0.15, depth: BALCONY_DEPTH, offset: BALCONY_DEPTH / 2, y: y + 0.08 }))
+      rails.push(boxAlongEdge(edge, outward, { width, height: RAIL_HEIGHT, depth: 0.06, offset: BALCONY_DEPTH - 0.03, y: y + 0.15 + RAIL_HEIGHT / 2 }))
+    }
+    planters.push(boxAlongEdge(edge, outward, { width: v1 - v0 - 1, height: 0.45, depth: 0.7, offset: -0.6, y: top + 0.22 }))
   })
+
+  // Lift and stair cores: plain white boxes rising above the roof
+  cores.forEach((core) => {
+    const box = bounds(core.polygon.map(toLocal).map(toFrame))
+    const coreTop = top + CORE_EXTRA_HEIGHT
+    addBoxWalls(group, box, 0, coreTop, facade, '#f1eee8', fromFrame, ['west', 'east', 'north', 'south'])
+    addSurface(group, rect(box).map(fromFrame), coreTop, '#e8e5de')
+  })
+
   group.add(new THREE.Mesh(mergeGeometries(slabs), new THREE.MeshLambertMaterial({ color: '#e4e1da' })))
   group.add(
     new THREE.Mesh(
@@ -335,11 +270,12 @@ function addClubHouse(group, club, pool, toLocal) {
 
 function buildGeneratedModel(project, toLocal) {
   const group = new THREE.Group()
-  const { blocks = [], plots } = project.layout
+  const { blocks = [], cores = [], plots } = project.layout
 
   blocks.forEach((block) => {
     const flats = plots.filter((plot) => plot.kind !== 'amenity' && plot.zone === block.name)
-    if (flats.length) addBlock(group, block, flats, toLocal)
+    const blockCores = cores.filter((core) => core.zone === block.name)
+    if (flats.length) addBlock(group, block, flats, blockCores, toLocal)
   })
 
   const club = plots.find((plot) => plot.number === 'Club House')

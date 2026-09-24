@@ -48,6 +48,8 @@ const projectSchema = new Schema(
       boundary: ring,
       // A block is one building: its footprint and how many floors sit on the stilt level
       blocks: [{ _id: false, name: String, polygon: ring, floors: Number }],
+      // Lift and stair cores, drawn as taller boxes in the 3D view
+      cores: [{ _id: false, zone: String, kind: String, polygon: ring }],
     },
     // Optional architect's 3D model (glTF/GLB) to show instead of the generated buildings
     model: {

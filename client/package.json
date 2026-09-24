@@ -14,7 +14,6 @@
     "@tailwindcss/vite": "^4.3.3",
     "lucide-react": "^1.47.0",
     "page-flip": "^2.0.7",
-    "polygon-clipping": "^0.15.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.4",

@@ -7,6 +7,7 @@ import {
   IRA_TOWERS_AMENITIES,
   IRA_TOWERS_BLOCKS,
   IRA_TOWERS_BOUNDARY,
+  IRA_TOWERS_CORES,
   IRA_TOWERS_OVERLAY,
   IRA_TOWERS_PLOTS,
 } from './iraTowersLayout.js'
@@ -91,6 +92,7 @@ export const PROJECTS = [
       overlay: IRA_TOWERS_OVERLAY, // the plan drawing itself, draped over the map
       boundary: IRA_TOWERS_BOUNDARY,
       blocks: IRA_TOWERS_BLOCKS,
+      cores: IRA_TOWERS_CORES, // lift and stair cores, drawn in 3D
       // Each flat's shape from the master plan, plus its type, facing, rooms and plan image
       plots: [
         ...IRA_TOWERS_PLOTS.map((plot) => ({ ...plot, ...getIraFlatDetails(plot.number) })),
