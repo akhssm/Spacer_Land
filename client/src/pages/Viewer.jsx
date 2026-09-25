@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { BookOpen, Image, Info, LocateFixed, MessageCircle, Navigation, Search } from 'lucide-react'
 import BrochureViewer from '../components/viewer/BrochureViewer'
+import { COMPARE_LIMIT, ComparePanel, CompareTray } from '../components/viewer/ComparePanel'
 import GalleryViewer from '../components/viewer/GalleryViewer'
 import MapView from '../components/viewer/MapView'
 import { AmenityPanel, BlockChips, BlockPanel, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
@@ -50,6 +51,7 @@ function ProjectViewer({ shortCode }) {
   const [selectedPlot, setSelectedPlot] = useState(null)
   const [selectedBlock, setSelectedBlock] = useState(null) // a block name, or null for all
   const [selectedUnit, setSelectedUnit] = useState(null) // one flat on one floor, for the enquiry
+  const [compareList, setCompareList] = useState([]) // [{ plot, unit }] picked for side-by-side comparison
   const [userPosition, setUserPosition] = useState(null)
   const [gpsOn, setGpsOn] = useState(false)
   const [toast, setToast] = useState('')
@@ -133,6 +135,17 @@ function ProjectViewer({ shortCode }) {
     setSelectedPlot(null)
     setSelectedUnit(null)
   }, [])
+
+  // Add or remove the open flat (with its chosen floor) from the comparison
+  const toggleCompare = () => {
+    setCompareList((list) => {
+      const index = list.findIndex((entry) => entry.plot.number === selectedPlot.number)
+      if (index !== -1) return list.filter((_, i) => i !== index)
+      if (list.length >= COMPARE_LIMIT) return list
+      return [...list, { plot: selectedPlot, unit: selectedUnit }]
+    })
+  }
+  const compareIndex = selectedPlot ? compareList.findIndex((entry) => entry.plot.number === selectedPlot.number) : -1
 
   // From the block grid: open that tower's panel with the chosen floor highlighted
   const selectUnitInTower = (tower, unit) => {
@@ -328,6 +341,7 @@ function ProjectViewer({ shortCode }) {
             onSelectUnit={setSelectedUnit}
             showStatus={colorMode === 'status'}
             enquiryLink={enquiryLink}
+            compare={{ inList: compareIndex !== -1, full: compareList.length >= COMPARE_LIMIT, onToggle: toggleCompare }}
             onClose={() => setSelectedPlot(null)}
           />
         ) : selectedPlot.kind === 'amenity' ? (
@@ -347,6 +361,24 @@ function ProjectViewer({ shortCode }) {
       )}
       {openPanel === 'search' && <SearchPanel project={project} onSelect={selectPlot} onClose={() => setOpenPanel(null)} />}
       {openPanel === 'info' && <InfoPanel project={project} onClose={() => setOpenPanel(null)} />}
+      {openPanel !== 'compare' && (
+        <CompareTray entries={compareList} shifted={sidePanelOpen} onOpen={() => setOpenPanel('compare')} onClear={() => setCompareList([])} />
+      )}
+      {openPanel === 'compare' && (
+        <ComparePanel
+          project={project}
+          entries={compareList}
+          towerUnits={towerUnits}
+          onChangeUnit={(column, unit) => setCompareList((list) => list.map((entry, i) => (i === column ? { ...entry, unit } : entry)))}
+          onRemove={(column) => {
+            const next = compareList.filter((_, i) => i !== column)
+            setCompareList(next)
+            if (next.length < 2) setOpenPanel(null)
+          }}
+          enquiryLink={enquiryLink}
+          onClose={() => setOpenPanel(null)}
+        />
+      )}
       {openPanel === 'gallery' && (
         <GalleryViewer items={gallery} title={project.name} onClose={() => setOpenPanel(null)} />
       )}

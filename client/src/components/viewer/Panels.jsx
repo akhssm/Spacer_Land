@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Compass, ExternalLink, MessageCircle, Search, X } from 'lucide-react'
+import { Columns3, Compass, ExternalLink, MessageCircle, Search, X } from 'lucide-react'
 import { SQ_FT_PER_SQ_M, areaSqMetres, directionsUrl, formatArea } from '../../lib/geo'
 import { STATUS_BG, STATUS_LABEL, STATUS_ORDER, countByStatus } from '../../lib/inventory'
 import GalleryViewer from './GalleryViewer'
@@ -145,7 +145,17 @@ export function BlockChips({ blocks, selected, onSelect }) {
 
 // Everything about one flat position: type, facing, area, its floor plan, every
 // room's size, and the status of that flat on every floor
-export function FlatPanel({ project, plot, units = [], selectedUnit, onSelectUnit, showStatus, enquiryLink, onClose }) {
+export function FlatPanel({
+  project,
+  plot,
+  units = [],
+  selectedUnit,
+  onSelectUnit,
+  showStatus,
+  enquiryLink,
+  compare, // { inList, full, onToggle }
+  onClose,
+}) {
   const area = formatArea(plot.areaSqFt / SQ_FT_PER_SQ_M)
   const title = `${project.unitLabel} ${plot.number}`
   const chosen = selectedUnit ? ` (${selectedUnit.number}, floor ${selectedUnit.floor})` : ''
@@ -251,6 +261,21 @@ export function FlatPanel({ project, plot, units = [], selectedUnit, onSelectUni
       >
         <MessageCircle size={16} /> {selectedUnit ? `Enquire about ${selectedUnit.number}` : 'Enquire about this flat'}
       </a>
+
+      {compare && (
+        <button
+          type="button"
+          onClick={compare.onToggle}
+          disabled={!compare.inList && compare.full}
+          aria-pressed={compare.inList}
+          className={`mt-2 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm font-bold transition-colors disabled:cursor-default disabled:opacity-50 ${
+            compare.inList ? 'border-brand bg-brand/10 text-brand' : 'border-line hover:border-brand'
+          }`}
+        >
+          <Columns3 size={16} />
+          {compare.inList ? 'Remove from compare' : compare.full ? 'Compare list is full' : 'Add to compare'}
+        </button>
+      )}
     </aside>
   )
 }
