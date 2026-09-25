@@ -20,7 +20,7 @@ function Faq() {
           <div className="relative space-y-3">
             {visibleFaqs.map((faq) => (
               // <details> opens and closes by itself, so it needs no React state
-              <details key={faq.question} className="group rounded-lg border border-line bg-card">
+              <details key={faq.question} className="group rounded-lg border border-line bg-card transition-colors hover:border-[#3a3a3a]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 text-[15px] font-bold [&::-webkit-details-marker]:hidden">
                   {faq.question}
                   <ChevronDown

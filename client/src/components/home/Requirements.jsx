@@ -11,8 +11,12 @@ function Requirements() {
         <Reveal>
           <div className="grid gap-5 md:grid-cols-3">
             {REQUIREMENTS.map(({ icon: Icon, title, text }) => (
-              <article key={title} className="rounded-lg border border-line bg-card p-6 pb-8">
-                <span className="inline-flex size-12 items-center justify-center rounded-lg bg-brand/15 text-brand">
+              // On hover the card lifts with a lime border and glow, and the icon grows and lights up
+              <article
+                key={title}
+                className="group rounded-lg border border-line bg-card p-6 pb-8 transition-all duration-500 ease-out hover:-translate-y-1.5 hover:border-brand/50 hover:shadow-[0_16px_40px_rgba(0,0,0,0.45),0_0_24px_rgba(117,194,23,0.1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+              >
+                <span className="inline-flex size-12 items-center justify-center rounded-lg bg-brand/15 text-brand transition-all duration-500 group-hover:scale-[1.08] group-hover:bg-brand/20 group-hover:shadow-[0_0_20px_rgba(117,194,23,0.3)]">
                   <Icon size={24} strokeWidth={1.8} />
                 </span>
                 <h3 className="mt-4 font-bold">{title}</h3>
