@@ -8,7 +8,7 @@ import { AmenityPanel, BlockChips, BlockPanel, FlatPanel, InfoPanel, PlotCard, S
 import { fetchProject } from '../api/projects'
 import { SITE, getContactLink } from '../data/homeContent'
 import { directionsUrl } from '../lib/geo'
-import { towerStatus, unitsByTower } from '../lib/inventory'
+import { countByStatus, towerStatus, unitsByTower } from '../lib/inventory'
 
 const PILL =
   'inline-flex items-center justify-center gap-2 rounded-full bg-[#1c1c1c]/90 px-5 py-3 text-sm font-semibold backdrop-blur transition-colors'
@@ -209,6 +209,16 @@ function ProjectViewer({ shortCode }) {
   const gallery = project.gallery ?? []
   // Flats and amenities open a panel on the right on desktop, so other controls move out from under it
   const blockPanelOpen = Boolean(selectedBlock) && !selectedPlot && units.length > 0
+
+  // Counts for the status legend: the chosen block's units, or the whole project's;
+  // projects without floors count their plots instead
+  const legendScope = selectedBlock ? selectedBlock : project.name
+  const legendCounts = countByStatus(
+    units.length
+      ? units.filter((unit) => !selectedBlock || unit.block === selectedBlock)
+      : project.layout.plots.filter((plot) => plot.kind !== 'amenity' && (!selectedBlock || plot.zone === selectedBlock)),
+  )
+  const legendTotal = Object.values(legendCounts).reduce((sum, n) => sum + n, 0)
   const sidePanelOpen = Boolean(selectedPlot?.plan || selectedPlot?.kind === 'amenity' || blockPanelOpen) && !openPanel
   // WhatsApp link with a ready-made message, or the site's contact link if the project has no number
   const enquiryLink = (message) =>
@@ -255,13 +265,20 @@ function ProjectViewer({ shortCode }) {
 
       {colorMode === 'status' && (
         <ul
-          className={`absolute top-5 flex flex-col gap-1 rounded-lg bg-black/60 p-2 text-xs backdrop-blur transition-[right] ${
-            sidePanelOpen ? 'right-5 md:right-104' : 'right-5'
+          className={`absolute flex flex-col gap-1 rounded-lg bg-black/60 p-2 text-xs backdrop-blur transition-[right,top] ${
+            // With a panel open it slides left, and on desktop drops under the block chips
+            sidePanelOpen ? 'top-5 right-5 md:top-16 md:right-104' : 'top-5 right-5'
           }`}
         >
+          <li className="mb-1 text-[10px] font-bold tracking-wider text-muted uppercase">
+            {legendScope} · {legendTotal} {project.unitLabel.toLowerCase()}s
+          </li>
           {Object.entries(STATUS_SWATCH).map(([status, swatch]) => (
-            <li key={status} className="flex items-center gap-2 capitalize">
-              <span className={`size-3 rounded-sm ${swatch}`} /> {status}
+            <li key={status} className="flex items-center justify-between gap-4 capitalize">
+              <span className="flex items-center gap-2">
+                <span className={`size-3 rounded-sm ${swatch}`} /> {status}
+              </span>
+              <span className="font-bold tabular-nums">{legendCounts[status]}</span>
             </li>
           ))}
         </ul>
