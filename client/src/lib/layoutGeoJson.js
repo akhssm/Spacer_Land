@@ -35,7 +35,11 @@ export function buildLayoutGeoJson(project, { colorMode, selectedPlot, selectedB
         outlineOpacity: (isAmenity ? 0 : drawingShown ? 0.35 : 1) * dim,
         selected: selectedPlot?.number === plot.number,
         height: plot.height ?? (isAmenity ? 0 : (project.unitHeight ?? DEFAULT_HEIGHT_METRES)),
-        label: plot.number,
+        // In status mode a tower with floors also shows how many are still available
+        label:
+          colorMode === 'status' && plot.availableCount != null
+            ? `${plot.number}\n${plot.availableCount}/${plot.unitCount} avl`
+            : plot.number,
         labelOpacity: (isAmenity ? 1 : drawingShown ? 0 : 1) * dim,
         labelColour: isAmenity || colorMode === 'status' ? '#ffffff' : '#3b3a2a',
         labelHalo: isAmenity ? 1.2 : 0,

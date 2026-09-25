@@ -14,15 +14,21 @@ import { PROJECTS } from './data/projects.js'
 
 const SAMPLE_STATUSES = true
 
-// A fixed pseudo-random spread: about 60% available, 22% sold, 10% hold, 8% reserved
-function sampleStatus(tower, floor) {
+const STATUSES = ['available', 'hold', 'sold', 'reserved']
+
+function hashOf(text) {
   let hash = 7
-  for (const char of `${tower}/${floor}`) hash = (hash * 31 + char.charCodeAt(0)) % 1000003
-  const roll = hash % 100
-  if (roll < 60) return 'available'
-  if (roll < 82) return 'sold'
-  if (roll < 92) return 'hold'
-  return 'reserved'
+  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) % 1000003
+  return hash
+}
+
+// A fixed pseudo-random spread. Each tower leans towards one status (so the
+// map shows towers of every colour), and the rest of its floors are mixed.
+function sampleStatus(tower, floor) {
+  const leaning = STATUSES[hashOf(tower) % STATUSES.length]
+  const roll = hashOf(`${tower}/${floor}`) % 100
+  if (roll < 55) return leaning
+  return STATUSES[roll % STATUSES.length]
 }
 
 async function seed() {

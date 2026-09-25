@@ -101,7 +101,16 @@ function ProjectViewer({ shortCode }) {
       ...project,
       layout: {
         ...project.layout,
-        plots: project.layout.plots.map((plot) => (towerUnits[plot.number] ? { ...plot, status: towerStatus(towerUnits[plot.number]) } : plot)),
+        plots: project.layout.plots.map((plot) => {
+          const tower = towerUnits[plot.number]
+          if (!tower) return plot
+          return {
+            ...plot,
+            status: towerStatus(tower),
+            availableCount: tower.filter((unit) => unit.status === 'available').length,
+            unitCount: tower.length,
+          }
+        }),
       },
     }
   }, [project, units, towerUnits])

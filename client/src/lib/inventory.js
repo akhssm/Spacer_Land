@@ -32,13 +32,10 @@ export function unitsByTower(units) {
   return byTower
 }
 
-// The colour a tower gets on the map in status mode: available while anything
-// is still available, otherwise the "softest" status left, sold when all sold.
+// The colour a tower gets on the map in status mode: the status most of its
+// floors have. Ties go to the earlier entry in STATUS_ORDER.
 export function towerStatus(units) {
   if (!units?.length) return null
   const counts = countByStatus(units)
-  if (counts.available) return 'available'
-  if (counts.hold) return 'hold'
-  if (counts.reserved) return 'reserved'
-  return 'sold'
+  return STATUS_ORDER.reduce((best, status) => (counts[status] > counts[best] ? status : best))
 }
