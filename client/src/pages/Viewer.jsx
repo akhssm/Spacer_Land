@@ -1,18 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { BookOpen, Image, Info, LocateFixed, MessageCircle, Navigation, Search } from 'lucide-react'
 import BrochureViewer from '../components/viewer/BrochureViewer'
 import GalleryViewer from '../components/viewer/GalleryViewer'
 import MapView from '../components/viewer/MapView'
-import { AmenityPanel, BlockChips, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
+import { AmenityPanel, BlockChips, BlockPanel, FlatPanel, InfoPanel, PlotCard, SearchPanel } from '../components/viewer/Panels'
 import { fetchProject } from '../api/projects'
 import { SITE, getContactLink } from '../data/homeContent'
 import { directionsUrl } from '../lib/geo'
+import { towerStatus, unitsByTower } from '../lib/inventory'
 
 const PILL =
   'inline-flex items-center justify-center gap-2 rounded-full bg-[#1c1c1c]/90 px-5 py-3 text-sm font-semibold backdrop-blur transition-colors'
 
-const NO_BLOCKS = [] // one shared empty list, so it never counts as a change
+const NO_BLOCKS = [] // shared empty lists, so they never count as a change
+const NO_UNITS = []
 
 // Written out in full so Tailwind can find the classes
 const STATUS_SWATCH = {
@@ -47,6 +49,7 @@ function ProjectViewer({ shortCode }) {
   const [colorMode, setColorMode] = useState('plain') // 'plain' | 'zones' | 'status'
   const [selectedPlot, setSelectedPlot] = useState(null)
   const [selectedBlock, setSelectedBlock] = useState(null) // a block name, or null for all
+  const [selectedUnit, setSelectedUnit] = useState(null) // one flat on one floor, for the enquiry
   const [userPosition, setUserPosition] = useState(null)
   const [gpsOn, setGpsOn] = useState(false)
   const [toast, setToast] = useState('')
@@ -88,11 +91,26 @@ function ProjectViewer({ shortCode }) {
   }
 
   const blocks = project?.layout.blocks ?? NO_BLOCKS
+  const units = project?.units ?? NO_UNITS
+  const towerUnits = useMemo(() => unitsByTower(units), [units])
+  // The map colours each tower from its units' statuses; kept stable so the map is not rebuilt
+  const mapProject = useMemo(() => {
+    if (!project) return null
+    if (!units.length) return project
+    return {
+      ...project,
+      layout: {
+        ...project.layout,
+        plots: project.layout.plots.map((plot) => (towerUnits[plot.number] ? { ...plot, status: towerStatus(towerUnits[plot.number]) } : plot)),
+      },
+    }
+  }, [project, units, towerUnits])
 
   // Choosing a flat also chooses its block, so the other blocks fade back
   const selectPlot = useCallback(
     (plot) => {
       setSelectedPlot(plot)
+      setSelectedUnit(null)
       if (plot) {
         setOpenPanel(null)
         if (blocks.some((block) => block.name === plot.zone)) setSelectedBlock(plot.zone)
@@ -104,7 +122,15 @@ function ProjectViewer({ shortCode }) {
   const selectBlock = useCallback((name) => {
     setSelectedBlock(name)
     setSelectedPlot(null)
+    setSelectedUnit(null)
   }, [])
+
+  // From the block grid: open that tower's panel with the chosen floor highlighted
+  const selectUnitInTower = (tower, unit) => {
+    setSelectedPlot(tower)
+    setSelectedUnit(unit)
+    setOpenPanel(null)
+  }
 
   if (loadError) {
     const notFound = loadError.status === 404
@@ -173,7 +199,8 @@ function ProjectViewer({ shortCode }) {
   const hasBrochure = project.brochure.pages.length > 0
   const gallery = project.gallery ?? []
   // Flats and amenities open a panel on the right on desktop, so other controls move out from under it
-  const sidePanelOpen = Boolean(selectedPlot?.plan || selectedPlot?.kind === 'amenity') && !openPanel
+  const blockPanelOpen = Boolean(selectedBlock) && !selectedPlot && units.length > 0
+  const sidePanelOpen = Boolean(selectedPlot?.plan || selectedPlot?.kind === 'amenity' || blockPanelOpen) && !openPanel
   // WhatsApp link with a ready-made message, or the site's contact link if the project has no number
   const enquiryLink = (message) =>
     project.whatsapp ? `https://wa.me/${project.whatsapp}?text=${encodeURIComponent(message)}` : getContactLink()
@@ -192,7 +219,7 @@ function ProjectViewer({ shortCode }) {
   return (
     <main className="relative h-svh overflow-hidden bg-base">
       <MapView
-        project={project}
+        project={mapProject}
         colorMode={colorMode}
         selectedPlot={selectedPlot}
         selectedBlock={selectedBlock}
@@ -218,7 +245,11 @@ function ProjectViewer({ shortCode }) {
       </header>
 
       {colorMode === 'status' && (
-        <ul className="absolute top-5 right-5 flex flex-col gap-1 rounded-lg bg-black/60 p-2 text-xs backdrop-blur">
+        <ul
+          className={`absolute top-5 flex flex-col gap-1 rounded-lg bg-black/60 p-2 text-xs backdrop-blur transition-[right] ${
+            sidePanelOpen ? 'right-5 md:right-104' : 'right-5'
+          }`}
+        >
           {Object.entries(STATUS_SWATCH).map(([status, swatch]) => (
             <li key={status} className="flex items-center gap-2 capitalize">
               <span className={`size-3 rounded-sm ${swatch}`} /> {status}
@@ -266,6 +297,9 @@ function ProjectViewer({ shortCode }) {
           <FlatPanel
             project={project}
             plot={selectedPlot}
+            units={towerUnits[selectedPlot.number] ?? NO_UNITS}
+            selectedUnit={selectedUnit}
+            onSelectUnit={setSelectedUnit}
             showStatus={colorMode === 'status'}
             enquiryLink={enquiryLink}
             onClose={() => setSelectedPlot(null)}
@@ -275,6 +309,15 @@ function ProjectViewer({ shortCode }) {
         ) : (
           <PlotCard project={project} plot={selectedPlot} showStatus={colorMode === 'status'} onClose={() => setSelectedPlot(null)} />
         )
+      )}
+      {blockPanelOpen && !openPanel && (
+        <BlockPanel
+          project={project}
+          block={selectedBlock}
+          units={units.filter((unit) => unit.block === selectedBlock)}
+          onSelectUnit={selectUnitInTower}
+          onClose={() => setSelectedBlock(null)}
+        />
       )}
       {openPanel === 'search' && <SearchPanel project={project} onSelect={selectPlot} onClose={() => setOpenPanel(null)} />}
       {openPanel === 'info' && <InfoPanel project={project} onClose={() => setOpenPanel(null)} />}

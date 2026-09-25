@@ -1,5 +1,7 @@
 import Plot from '../models/Plot.js'
 import Project from '../models/Project.js'
+import Unit from '../models/Unit.js'
+import { loadUnits } from './units.js'
 
 // ---------- Converting between what the database stores and what the viewer expects ----------
 
@@ -42,7 +44,7 @@ function projectFromClient(body) {
 
 async function loadForClient(project) {
   const plots = await Plot.find({ project: project._id }).sort({ _id: 1 })
-  return projectToClient(project, plots)
+  return { ...projectToClient(project, plots), units: await loadUnits(project._id) }
 }
 
 // ---------- Route handlers ----------
@@ -113,6 +115,7 @@ export async function deleteProject(req, res) {
   const project = await Project.findOneAndDelete({ shortCode: req.params.shortCode })
   if (!project) return res.status(404).json({ message: 'Project not found' })
   await Plot.deleteMany({ project: project._id })
+  await Unit.deleteMany({ project: project._id })
   res.status(204).end()
 }
 

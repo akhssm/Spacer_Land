@@ -6,9 +6,24 @@
 import 'dotenv/config'
 import mongoose from 'mongoose'
 import { connectDB } from '../config/db.js'
+import { buildUnits } from '../lib/inventory.js'
 import Plot from '../models/Plot.js'
 import Project from '../models/Project.js'
+import Unit from '../models/Unit.js'
 import { PROJECTS } from './data/projects.js'
+
+const SAMPLE_STATUSES = true
+
+// A fixed pseudo-random spread: about 60% available, 22% sold, 10% hold, 8% reserved
+function sampleStatus(tower, floor) {
+  let hash = 7
+  for (const char of `${tower}/${floor}`) hash = (hash * 31 + char.charCodeAt(0)) % 1000003
+  const roll = hash % 100
+  if (roll < 60) return 'available'
+  if (roll < 82) return 'sold'
+  if (roll < 92) return 'hold'
+  return 'reserved'
+}
 
 async function seed() {
   await connectDB()
@@ -32,7 +47,14 @@ async function seed() {
       })),
     )
 
-    console.log(`${project.name} (${project.shortCode}): ${plots.length} shapes`)
+    // One unit per flat position per floor, with sample statuses so the
+    // inventory has something to show. Set SAMPLE_STATUSES to false for a
+    // real launch, and every unit starts as available.
+    await Unit.deleteMany({ project: project._id })
+    const units = buildUnits(project._id, layoutFields.blocks ?? [], plots, SAMPLE_STATUSES ? sampleStatus : undefined)
+    if (units.length) await Unit.insertMany(units)
+
+    console.log(`${project.name} (${project.shortCode}): ${plots.length} shapes, ${units.length} units`)
   }
 
   await mongoose.disconnect()

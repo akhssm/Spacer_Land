@@ -1,7 +1,117 @@
 import { useState } from 'react'
 import { Compass, ExternalLink, MessageCircle, Search, X } from 'lucide-react'
 import { SQ_FT_PER_SQ_M, areaSqMetres, directionsUrl, formatArea } from '../../lib/geo'
+import { STATUS_BG, STATUS_LABEL, STATUS_ORDER, countByStatus } from '../../lib/inventory'
 import GalleryViewer from './GalleryViewer'
+
+const SIDE_PANEL =
+  'absolute inset-x-3 bottom-3 z-20 max-h-[75svh] overflow-y-auto rounded-xl border border-line bg-panel/95 p-5 text-sm backdrop-blur md:inset-x-auto md:top-20 md:right-5 md:bottom-5 md:max-h-none md:w-96'
+
+// "Available 6 · Hold 1 · Sold 2 · Reserved 1" as coloured chips
+export function StatusCounts({ counts, size = 'sm' }) {
+  return (
+    <ul className="flex flex-wrap gap-1.5">
+      {STATUS_ORDER.map((status) => (
+        <li
+          key={status}
+          className={`inline-flex items-center gap-1.5 rounded-full bg-white/10 font-bold ${
+            size === 'sm' ? 'px-2.5 py-0.5 text-[11px]' : 'px-3 py-1 text-xs'
+          }`}
+        >
+          <span className={`size-2.5 rounded-sm ${STATUS_BG[status]}`} />
+          {STATUS_LABEL[status]} {counts[status]}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+// One block's inventory: a grid with a column per tower and a row per floor,
+// every cell one unit coloured by status. Clicking a cell opens that flat.
+export function BlockPanel({ project, block, units, onSelectUnit, onClose }) {
+  const towers = project.layout.plots.filter((plot) => plot.kind !== 'amenity' && plot.zone === block)
+  const floors = [...new Set(units.map((unit) => unit.floor))].sort((a, b) => b - a)
+  const byKey = new Map(units.map((unit) => [`${unit.tower}/${unit.floor}`, unit]))
+  const floorCounts = (floor) => countByStatus(units.filter((unit) => unit.floor === floor))
+  const towerCounts = (tower) => countByStatus(units.filter((unit) => unit.tower === tower))
+
+  return (
+    <aside aria-label={`${block} inventory`} className={SIDE_PANEL}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold">{block}</h2>
+          <p className="text-xs text-muted">
+            {towers.length} towers · {floors.length} floors · {units.length} {project.unitLabel.toLowerCase()}s
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={`Close ${block}`}
+          className="cursor-pointer rounded-full p-1 text-muted hover:text-white"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      <StatusCounts counts={countByStatus(units)} />
+
+      {units.length === 0 ? (
+        <p className="mt-4 text-muted">No inventory yet for this block.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="border-separate border-spacing-0.5 text-[10px] leading-none">
+            <thead>
+              <tr>
+                <th className="pr-1 text-left font-normal text-muted">Floor</th>
+                {towers.map((tower) => (
+                  <th key={tower.number} className="w-5 pb-1 font-bold text-white/85" title={`${project.unitLabel} ${tower.number}`}>
+                    {tower.number.replace(/^.*-/, '')}
+                  </th>
+                ))}
+                <th className="pl-1 text-left font-normal text-muted">Avail.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {floors.map((floor) => (
+                <tr key={floor}>
+                  <th className="pr-1 text-left font-bold text-white/85">{floor}</th>
+                  {towers.map((tower) => {
+                    const unit = byKey.get(`${tower.number}/${floor}`)
+                    return (
+                      <td key={tower.number}>
+                        {unit && (
+                          <button
+                            type="button"
+                            onClick={() => onSelectUnit(tower, unit)}
+                            title={`${unit.number}: ${STATUS_LABEL[unit.status]}`}
+                            aria-label={`${unit.number}, ${STATUS_LABEL[unit.status]}`}
+                            className={`block size-5 cursor-pointer rounded-sm transition-transform hover:scale-125 ${STATUS_BG[unit.status]}`}
+                          />
+                        )}
+                      </td>
+                    )
+                  })}
+                  <td className="pl-1 text-muted">{floorCounts(floor).available}</td>
+                </tr>
+              ))}
+              <tr>
+                <th className="pt-1 pr-1 text-left font-normal text-muted">Avail.</th>
+                {towers.map((tower) => (
+                  <td key={tower.number} className="pt-1 text-center text-muted">
+                    {towerCounts(tower.number).available}
+                  </td>
+                ))}
+                <td />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-3 text-[11px] text-muted">Each square is one flat. Tap a square to see that flat.</p>
+    </aside>
+  )
+}
 
 const CHIP =
   'inline-flex cursor-pointer items-center rounded-full border px-3.5 py-1.5 text-xs font-bold transition-colors'
@@ -33,17 +143,17 @@ export function BlockChips({ blocks, selected, onSelect }) {
   )
 }
 
-// Everything about one flat: type, facing, area, its floor plan and every room's size
-export function FlatPanel({ project, plot, showStatus, enquiryLink, onClose }) {
+// Everything about one flat position: type, facing, area, its floor plan, every
+// room's size, and the status of that flat on every floor
+export function FlatPanel({ project, plot, units = [], selectedUnit, onSelectUnit, showStatus, enquiryLink, onClose }) {
   const area = formatArea(plot.areaSqFt / SQ_FT_PER_SQ_M)
   const title = `${project.unitLabel} ${plot.number}`
-  const message = `Hi, I am interested in ${title} (${plot.bhk}, ${plot.facing} facing, ${area.sqft}) at ${project.name}.`
+  const chosen = selectedUnit ? ` (${selectedUnit.number}, floor ${selectedUnit.floor})` : ''
+  const message = `Hi, I am interested in ${title}${chosen} at ${project.name}: ${plot.bhk}, ${plot.facing} facing, ${area.sqft}.`
+  const counts = units.length ? countByStatus(units) : null
 
   return (
-    <aside
-      aria-label={title}
-      className="absolute inset-x-3 bottom-3 z-20 max-h-[75svh] overflow-y-auto rounded-xl border border-line bg-panel/95 p-5 text-sm backdrop-blur md:inset-x-auto md:top-20 md:right-5 md:bottom-5 md:max-h-none md:w-96"
-    >
+    <aside aria-label={title} className={SIDE_PANEL}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold">{title}</h2>
@@ -67,8 +177,41 @@ export function FlatPanel({ project, plot, showStatus, enquiryLink, onClose }) {
           <Compass size={12} /> {plot.facing} facing
         </span>
         <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold">{area.sqft}</span>
-        {showStatus && <StatusPill status={plot.status} />}
+        {showStatus && !counts && <StatusPill status={plot.status} />}
       </div>
+
+      {counts && (
+        <>
+          <h3 className="mb-2 text-xs font-bold tracking-[0.15em] text-muted uppercase">Availability by floor</h3>
+          <StatusCounts counts={counts} />
+          <ul className="mt-2 grid grid-cols-2 gap-1">
+            {units.map((unit) => {
+              const active = selectedUnit?.number === unit.number
+              return (
+                <li key={unit.number}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectUnit(active ? null : unit)}
+                    aria-pressed={active}
+                    className={`flex w-full cursor-pointer items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors ${
+                      active ? 'border-brand bg-brand/10' : 'border-line hover:border-white/30'
+                    }`}
+                  >
+                    <span>
+                      <span className="text-muted">Floor {unit.floor}</span>
+                      <span className="ml-1.5 font-bold">{unit.number}</span>
+                    </span>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${STATUS_BG[unit.status]}`}>
+                      {STATUS_LABEL[unit.status]}
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="mt-1.5 mb-4 text-[11px] text-muted">Tap a floor to ask about that flat.</p>
+        </>
+      )}
 
       <a href={plot.plan} target="_blank" rel="noreferrer" title="Open the plan full size">
         <img
@@ -106,7 +249,7 @@ export function FlatPanel({ project, plot, showStatus, enquiryLink, onClose }) {
         rel="noreferrer"
         className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand px-5 py-3 text-sm font-bold text-[#0f0f0f] hover:bg-brand-dark"
       >
-        <MessageCircle size={16} /> Enquire about this flat
+        <MessageCircle size={16} /> {selectedUnit ? `Enquire about ${selectedUnit.number}` : 'Enquire about this flat'}
       </a>
     </aside>
   )
